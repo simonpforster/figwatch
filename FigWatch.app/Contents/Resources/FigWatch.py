@@ -9,6 +9,10 @@ from PyObjCTools import AppHelper
 
 # ── Config ──────────────────────────────────────────────────────────
 
+VERSION = "1.1.2"
+RELEASES_API = "https://api.github.com/repos/livisliving/FigWatch/releases/latest"
+RELEASES_URL = "https://github.com/livisliving/FigWatch/releases/latest"
+
 HOME = os.path.expanduser("~")
 CONFIG_DIR = os.path.join(HOME, ".figwatch")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
@@ -69,6 +73,33 @@ def _figma_get(path, pat):
         req = urllib.request.Request(f"https://api.figma.com/v1{path}", headers={"X-Figma-Token": pat})
         with urllib.request.urlopen(req, timeout=10) as r: return json.loads(r.read())
     except Exception: return None
+
+def _parse_version(s):
+    """Parse 'v1.1.2' / '1.1.2' → (1, 1, 2). Returns (0,0,0) on failure."""
+    try:
+        return tuple(int(x) for x in s.lstrip("v").strip().split(".")[:3])
+    except Exception:
+        return (0, 0, 0)
+
+
+def _fetch_latest_release():
+    """Fetch latest release metadata from GitHub. Returns dict or None."""
+    try:
+        req = urllib.request.Request(RELEASES_API, headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "FigWatch",
+        })
+        with urllib.request.urlopen(req, timeout=10) as r:
+            d = json.loads(r.read())
+        return {
+            "tag": d.get("tag_name", ""),
+            "name": d.get("name", ""),
+            "url": d.get("html_url", RELEASES_URL),
+            "body": d.get("body", ""),
+        }
+    except Exception:
+        return None
+
 
 def _post_notification(title, message):
     try:
@@ -949,7 +980,7 @@ class FigWatch(NSObject):
         alert.addButtonWithTitle_("Cancel")
 
         # Build accessory view
-        acc = FlippedView.alloc().initWithFrame_(NSMakeRect(0, 0, 340, 190))
+        acc = FlippedView.alloc().initWithFrame_(NSMakeRect(0, 0, 340, 220))
 
         # ── Figma Token ──
         tok_label = _label("Figma Personal Access Token", size=12, weight=NSFontWeightMedium)
@@ -992,6 +1023,27 @@ class FigWatch(NSObject):
         lang_popup.selectItemAtIndex_(lang_map.get(self._state.get("reply_lang", "en"), 0))
         acc.addSubview_(lang_popup)
 
+        # ── Version / Updates ──
+        ver_label = _label(f"FigWatch v{VERSION}", size=11,
+                           color=NSColor.tertiaryLabelColor())
+        ver_label.setFrameOrigin_((0, 192))
+        acc.addSubview_(ver_label)
+
+        upd_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, 188, 140, 24))
+        upd_btn.setTitle_("Check for Updates")
+        upd_btn.setBordered_(False)
+        upd_btn.setWantsLayer_(True)
+        upd_btn.layer().setBackgroundColor_(
+            NSColor.labelColor().colorWithAlphaComponent_(0.08).CGColor())
+        upd_btn.layer().setCornerRadius_(12)
+        upd_btn.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
+        upd_btn.setTarget_(self); upd_btn.setAction_(b"doCheckUpdate:")
+        upd_btn.sizeToFit()
+        ubf = upd_btn.frame()
+        upd_btn.setFrameSize_(NSMakeSize(ubf.size.width + 20, 24))
+        upd_btn.setFrameOrigin_((340 - upd_btn.frame().size.width, 188))
+        acc.addSubview_(upd_btn)
+
         alert.setAccessoryView_(acc)
         alert.window().setInitialFirstResponder_(tok_input)
 
@@ -1031,6 +1083,56 @@ class FigWatch(NSObject):
             if needs_restart and self._is_watching() and self._state["current"]:
                 self._do_stop()
                 self._do_start(self._state["current"])
+
+    @objc.typedSelector(b"v@:@")
+    def doCheckUpdate_(self, sender):
+        # Dismiss the Settings modal we're inside first — NSAlert runs modal,
+        # so we end it with "Cancel" (second button) to avoid saving nothing.
+        win = sender.window()
+        if win:
+            NSApp.abortModal()
+            win.orderOut_(None)
+        # Run the network check on a background thread so we don't block UI.
+        threading.Thread(target=self._run_update_check, daemon=True).start()
+
+    def _run_update_check(self):
+        self._update_result = _fetch_latest_release()
+        self.performSelectorOnMainThread_withObject_waitUntilDone_(
+            b"showUpdateResult:", None, False)
+
+    @objc.typedSelector(b"v@:@")
+    def showUpdateResult_(self, _):
+        latest = getattr(self, "_update_result", None)
+        NSApp.activateIgnoringOtherApps_(True)
+        alert = NSAlert.alloc().init()
+        if not latest:
+            alert.setMessageText_("Couldn\u2019t check for updates")
+            alert.setInformativeText_(
+                "Check your internet connection and try again.")
+            alert.addButtonWithTitle_("OK")
+            alert.runModal()
+            return
+
+        cur = _parse_version(VERSION)
+        new = _parse_version(latest.get("tag", ""))
+        if new <= cur:
+            alert.setMessageText_("You\u2019re up to date")
+            alert.setInformativeText_(f"FigWatch v{VERSION} is the latest version.")
+            alert.addButtonWithTitle_("OK")
+            alert.runModal()
+            return
+
+        body = (latest.get("body") or "").strip()
+        if len(body) > 500:
+            body = body[:500].rstrip() + "\u2026"
+        alert.setMessageText_(f"Update available: {latest.get('tag', '')}")
+        alert.setInformativeText_(
+            f"You\u2019re on v{VERSION}.\n\n{body}" if body else f"You\u2019re on v{VERSION}.")
+        alert.addButtonWithTitle_("View Release")
+        alert.addButtonWithTitle_("Later")
+        if alert.runModal() == NSAlertFirstButtonReturn:
+            NSWorkspace.sharedWorkspace().openURL_(
+                NSURL.URLWithString_(latest.get("url", RELEASES_URL)))
 
     @objc.typedSelector(b"v@:@")
     def doLocale_(self, sender):

@@ -59,6 +59,7 @@ FigWatch stores its config in `~/.figwatch/`:
 
 ## What's new in v1.1.2
 
+- **Check for Updates** — new button in the Settings panel that checks the latest release on GitHub and opens the release page when an update is available.
 - **Watch from URL** — paste a Figma file link directly when auto-detect can't see your file. Recent Figma Desktop builds (v126+) no longer expose the remote-debugging port, which broke auto-detect for some users; this gives you a manual path that always works.
 - **Fixed Figma relaunch loop** — FigWatch will no longer quit and reopen Figma every 30 seconds when CDP isn't reachable. Auto-relaunch is now one-shot per session.
 - Fixed the Disconnect button overlapping long file names in the header.
