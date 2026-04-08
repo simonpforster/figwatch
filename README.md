@@ -57,6 +57,12 @@ FigWatch stores its config in `~/.figwatch/`:
 - `recent-watches.json` — recently watched files
 - `.processed-comments.json` — tracks which comments have been handled
 
+## What's new in v1.1.2
+
+- Fixed the Disconnect button overlapping long file names in the header.
+- Reply language setting — `@tone` and `@ux` can now reply in Chinese (简体中文) in addition to the source locale.
+- Refreshed AI model labels (Sonnet, Opus, Haiku) — version numbers dropped in the settings dropdown.
+
 ## What's new in v1.1.1
 
 - **Settings panel** — new gear icon in the footer opens a settings dialog with Figma token management and AI model switching (Sonnet, Opus, Haiku). Model choice is persisted and auto-restarts the watcher.

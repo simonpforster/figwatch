@@ -440,12 +440,7 @@ def build_popover_view(app):
         dot.setFrameOrigin_((PAD + 4, y + 3))
         root.addSubview_(dot)
 
-        fn = _label(app._state["current"]["name"], size=13, weight=NSFontWeightSemibold)
-        fn.setFrameSize_(NSMakeSize(cw - 80, 17))
-        fn.setFrameOrigin_((PAD + 18, y))
-        root.addSubview_(fn)
-
-        # Disconnect button — pill shaped
+        # Disconnect button — pill shaped (built first so we can reserve its width)
         stop = NSButton.alloc().initWithFrame_(NSMakeRect(0, 0, 0, 24))
         stop.setTitle_("Disconnect")
         stop.setBordered_(False)
@@ -456,9 +451,18 @@ def build_popover_view(app):
         stop.setTarget_(app); stop.setAction_(b"doStop:")
         stop.sizeToFit()
         sf = stop.frame()
-        stop.setFrameSize_(NSMakeSize(sf.size.width + 20, 24))
-        stop.setFrameOrigin_((PAD + cw - stop.frame().size.width - 2, y - 2))
+        btn_w = sf.size.width + 20
+        stop.setFrameSize_(NSMakeSize(btn_w, 24))
+        stop.setFrameOrigin_((PAD + cw - btn_w - 2, y - 2))
         root.addSubview_(stop)
+
+        # File name label — width reserved around the button with an 8px gap
+        fn = _label(app._state["current"]["name"], size=13, weight=NSFontWeightSemibold)
+        fn_w = max(0, cw - 18 - btn_w - 10)
+        fn.setFrameSize_(NSMakeSize(fn_w, 17))
+        fn.setFrameOrigin_((PAD + 18, y))
+        fn.cell().setLineBreakMode_(5)  # NSLineBreakByTruncatingTail
+        root.addSubview_(fn)
         y += 20
 
         # Meta line: locale + triggers
