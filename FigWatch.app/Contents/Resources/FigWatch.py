@@ -338,15 +338,26 @@ def check_deps(open_files=None):
     claude_ok = claude_path != "claude" and os.path.exists(claude_path)
     deps["claude"] = {"ok": claude_ok, "path": claude_path if claude_ok else None}
 
-    # Claude auth status
+    # Claude auth status — parse JSON output since `claude auth status` exits 0
+    # even when the user isn't logged in. We must look at the `loggedIn` field.
     if claude_ok:
         try:
             result = subprocess.run(
-                [claude_path, 'auth', 'status'],
+                [claude_path, 'auth', 'status', '--json'],
                 capture_output=True, timeout=5,
                 env={**os.environ, "PATH": f"/opt/homebrew/bin:/usr/local/bin:{os.environ.get('PATH', '')}"}
             )
-            deps["claude_auth"] = {"ok": result.returncode == 0}
+            stdout = result.stdout.decode('utf-8', errors='replace').strip()
+            logged_in = False
+            if stdout:
+                try:
+                    parsed = json.loads(stdout)
+                    logged_in = bool(parsed.get("loggedIn"))
+                except Exception:
+                    # Fallback: if JSON parsing fails, look for explicit negative signals
+                    low = stdout.lower()
+                    logged_in = result.returncode == 0 and "not logged" not in low and "not authenticated" not in low
+            deps["claude_auth"] = {"ok": logged_in}
         except Exception:
             deps["claude_auth"] = {"ok": False}
     else:

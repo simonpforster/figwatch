@@ -70,6 +70,10 @@ FigWatch stores its config in `~/.figwatch/`:
 ## What's new in v1.1.5
 
 - **Fix "Claude not installed" false positive** — the claude CLI path is now re-resolved on every dependency check instead of being cached once at launch. If you install Claude Code after starting FigWatch (or if claude lives in a non-standard location like `~/.local/bin`, `~/.volta/bin`, `~/.bun/bin`, etc.), FigWatch will now pick it up automatically. Falls back to searching an augmented PATH with `shutil.which` if none of the common paths match.
+- **Onboarding checklist stays put until setup is actually done** — `claude auth status` exits 0 even when you're not signed in, so FigWatch was incorrectly marking Claude Login as complete and hiding the checklist after a single view. It now parses the JSON `loggedIn` field, so the three required steps (Claude Code, Claude Login, Figma Token) persist in the onboarding panel until they're genuinely finished.
+- **Fix `@ux` hanging and returning "Unable to generate evaluation"** — Claude Code 2.1.72 needs `--add-dir` in addition to `--allowedTools Read` to actually read files outside the CWD. Without it, Claude would hit an interactive permission prompt for the `/tmp/figwatch-*` screenshot and node-tree files and block until the 120-second timeout killed it. FigWatch now passes `--add-dir /tmp` so the audit runs through cleanly.
+- **Surface Figma API errors instead of "Could not locate the commented frame"** — `_figma_get` now retries once on 429 (honoring `Retry-After`) and records the real HTTP error. When frame resolution fails, the reply now says "rate limited, try again in a minute" or "token missing file_content:read scope" instead of a generic not-found message.
+- **Strip stale handler `.pyc` from `lib/python39.zip`** — py2app was bundling compiled `handlers/*.pyc` files that Python's import machinery preferred over the loose `.py` files on disk. Any bug fix to a handler shipped after the initial build was silently ignored until the `.pyc` got regenerated. These entries are now removed from the shipped zip, so handler fixes take effect immediately.
 
 ## What's new in v1.1.4
 

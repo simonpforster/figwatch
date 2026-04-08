@@ -46,17 +46,43 @@ def _strip_markdown(text):
     return text
 
 
-def _figma_get(path, pat):
+_last_api_error = None
+
+
+def _figma_get(path, pat, retries=1):
+    """GET a Figma API endpoint. On 429, retries once after Retry-After seconds.
+
+    Sets _last_api_error on failure so callers can surface the real reason
+    instead of a generic "not found" message.
+    """
+    global _last_api_error
+    import time
     import urllib.request
-    try:
-        req = urllib.request.Request(
-            f'https://api.figma.com/v1{path}',
-            headers={'X-Figma-Token': pat}
-        )
-        with urllib.request.urlopen(req, timeout=15) as r:
-            return json.loads(r.read())
-    except Exception:
-        return None
+    import urllib.error
+    for attempt in range(retries + 1):
+        try:
+            req = urllib.request.Request(
+                f'https://api.figma.com/v1{path}',
+                headers={'X-Figma-Token': pat}
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                _last_api_error = None
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < retries:
+                wait = 0
+                try:
+                    wait = int(e.headers.get('Retry-After', '0') or 0)
+                except Exception:
+                    wait = 0
+                time.sleep(max(wait, 2))
+                continue
+            _last_api_error = f'HTTP {e.code} from Figma API ({path.split("?")[0]})'
+            return None
+        except Exception as e:
+            _last_api_error = f'{type(e).__name__} from Figma API ({path.split("?")[0]}): {e}'
+            return None
+    return None
 
 
 def _resolve_parent_frame(file_key, node_id, pat):
@@ -139,7 +165,13 @@ def ux_handler(*, node_id, file_key, pat, extra, claude_path, model='sonnet', re
     # Phase 1: Resolve parent frame
     frame = _resolve_parent_frame(file_key, node_id, pat)
     if not frame:
-        return '\U0001f5e3\ufe0f Claude UX Audit\n\n\u26a0\ufe0f Could not locate the commented frame.\n\n\u2014 Claude'
+        reason = _last_api_error or 'node not found in file'
+        hint = ''
+        if _last_api_error and '429' in _last_api_error:
+            hint = '\nFigma is rate-limiting this token. Try again in a minute, or reduce the number of files being watched at once.'
+        elif _last_api_error and '403' in _last_api_error:
+            hint = '\nYour Figma token may be missing the file_content:read scope, or lacks access to this file.'
+        return f'\U0001f5e3\ufe0f Claude UX Audit\n\n\u26a0\ufe0f Could not locate the commented frame.\nReason: {reason}{hint}\n\n\u2014 Claude'
 
     frame_id = frame['id']
     screen_name = frame.get('name') or 'Unnamed screen'
@@ -227,15 +259,40 @@ No preamble, no explanation — just the formatted reply.'''
             err = err[:400] + '\u2026'
         return 'Unable to generate evaluation.\n\n' + (f'Error: {err}' if err else f'claude exited with code {result.returncode}')
 
+    # --add-dir /tmp grants the Read tool access to the screenshot / node-tree
+    # files we just wrote there. Without it, Claude hits an interactive
+    # permission prompt per file and hangs until the timeout fires.
+    tmp_dir = tempfile.gettempdir()
     try:
         result = subprocess.run(
-            [claude_path, '-p', prompt, '--print', '--allowedTools', 'Read', '--model', model],
+            [claude_path, '-p', prompt, '--print',
+             '--allowedTools', 'Read',
+             '--add-dir', tmp_dir,
+             '--model', model],
             capture_output=True, timeout=120, env=env,
         )
+        # Debug: dump raw subprocess output so we can diagnose when Claude says
+        # "Unable to generate evaluation." or otherwise produces an unexpected reply.
+        try:
+            with open('/tmp/figwatch-ux-debug.log', 'w') as dbg:
+                dbg.write(f'returncode={result.returncode}\n')
+                dbg.write(f'screenshot_path={screenshot_path}\n')
+                dbg.write(f'tree_path={tree_path}\n')
+                dbg.write(f'--- STDOUT ---\n{result.stdout.decode("utf-8", errors="replace")}\n')
+                dbg.write(f'--- STDERR ---\n{result.stderr.decode("utf-8", errors="replace")}\n')
+        except Exception:
+            pass
         reply = _reply_from(result)
         header = f'\U0001f5e3\ufe0f Claude UX \u5ba1\u6838 \u2014 {screen_name}' if reply_lang == 'cn' else f'\U0001f5e3\ufe0f Claude UX Audit \u2014 {screen_name}'
         return f'{header}\n\n{reply}\n\n\u2014 Claude'
-    except Exception:
+    except Exception as main_exc:
+        # Record why the main path failed, so the debug log isn't empty when
+        # the fallback runs (main subprocess.run raised before its own dump).
+        try:
+            with open('/tmp/figwatch-ux-debug.log', 'a') as dbg:
+                dbg.write(f'--- MAIN EXCEPTION ---\n{type(main_exc).__name__}: {main_exc}\n')
+        except Exception:
+            pass
         # Fallback: inline tree data (no image)
         try:
             tree_data = _load(tree_path) if tree_path else None
@@ -254,6 +311,14 @@ No preamble, no explanation — just the formatted reply.'''
         except Exception as e:
             return f'\U0001f5e3\ufe0f Claude UX Audit\n\n\u26a0\ufe0f Evaluation failed: {e}\n\n\u2014 Claude'
     finally:
+        # Keep files around briefly for debugging — copy paths into the debug log
+        # so they can be inspected if the run produced an unexpected reply.
+        try:
+            with open('/tmp/figwatch-ux-debug.log', 'a') as dbg:
+                dbg.write(f'screenshot_exists={bool(screenshot_path) and os.path.exists(screenshot_path or "")}\n')
+                dbg.write(f'tree_exists={bool(tree_path) and os.path.exists(tree_path or "")}\n')
+        except Exception:
+            pass
         for p in [screenshot_path, tree_path]:
             if p:
                 try:
