@@ -982,14 +982,9 @@ class FigWatch(NSObject):
             b"setIconActive:", active, False)
 
     def _schedule_refresh(self):
-        """Debounced popover refresh on main thread."""
+        """Refresh the popover on the main thread if it's open."""
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
-            b"_debouncedRefresh:", None, False)
-
-    @objc.typedSelector(b"v@:@")
-    def _debouncedRefresh_(self, _):
-        NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            0.1, self, b"doRefreshPopover:", None, False)
+            b"doRefreshPopover:", None, False)
 
     # ── Icon ───────────────────────────────────────────────────
 
@@ -1047,35 +1042,51 @@ class FigWatch(NSObject):
     @objc.typedSelector(b"v@:@")
     def toggle_(self, sender):
         if self.popover.isShown():
-            self._close_popover(); return
+            self._close_popover()
+            return
+        # Always build a fresh view
         view, h = self._build_current_view()
         vc = NSViewController.alloc().init()
         vc.setView_(view)
         self.popover.setContentViewController_(vc)
         self.popover.setContentSize_(NSMakeSize(W, h))
-        self.popover.showRelativeToRect_ofView_preferredEdge_(
-            sender.bounds(), sender, NSMinYEdge)
+        try:
+            self.popover.showRelativeToRect_ofView_preferredEdge_(
+                sender.bounds(), sender, NSMinYEdge)
+        except Exception:
+            return
+        # Remove any stale monitor before adding a new one
+        self._remove_event_monitor()
         self._state["event_monitor"] = NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(
             NSLeftMouseDownMask | NSRightMouseDownMask,
             lambda event: self._close_popover()
         )
 
     def _close_popover(self):
-        if self.popover.isShown():
-            self.popover.close()
+        try:
+            if self.popover.isShown():
+                self.popover.close()
+        except Exception:
+            pass
+        self._remove_event_monitor()
+
+    def _remove_event_monitor(self):
         monitor = self._state.get("event_monitor")
         if monitor:
-            NSEvent.removeMonitor_(monitor)
+            try:
+                NSEvent.removeMonitor_(monitor)
+            except Exception:
+                pass
             self._state["event_monitor"] = None
 
     # ── Popover refresh ────────────────────────────────────────
 
     def _refresh_popover(self):
-        NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            0.1, self, b"doRefreshPopover:", None, False)
+        """Refresh popover on main thread (alias for _schedule_refresh)."""
+        self._schedule_refresh()
 
     @objc.typedSelector(b"v@:@")
-    def doRefreshPopover_(self, timer):
+    def doRefreshPopover_(self, _):
         if not self.popover.isShown():
             return
         view, h = self._build_current_view()
