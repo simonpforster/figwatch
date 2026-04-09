@@ -528,7 +528,6 @@ def build_popover_view(app):
 
     # ── File list or empty state ───────────────────────────────
     watched = app._state.get("watched", [])
-    manual_keys = {f["key"] for f in _load_watched()}
 
     if not watched:
         # Empty state
@@ -537,7 +536,7 @@ def build_popover_view(app):
         root.addSubview_(no_files)
         y += 20
 
-        hint = _label("Open a file in Figma Desktop, or add one manually.", size=11, color=NSColor.tertiaryLabelColor())
+        hint = _label("Open a file in Figma Desktop to start watching.", size=11, color=NSColor.tertiaryLabelColor())
         hint.setFrameOrigin_((PAD + 4, y))
         root.addSubview_(hint)
         y += 24
@@ -566,10 +565,10 @@ def build_popover_view(app):
             sl.setFrameOrigin_((10, 7))
             row.addSubview_(sl)
 
-            # File name
+            # File name (full width now, no room needed for x button)
             name_x = 80
             nl = _label(f["name"], size=12)
-            nl.setFrameSize_(NSMakeSize(cw - name_x - 30, 16))
+            nl.setFrameSize_(NSMakeSize(cw - name_x - 4, 16))
             nl.setFrameOrigin_((name_x, 7))
             nl.cell().setLineBreakMode_(5)
             row.addSubview_(nl)
@@ -583,42 +582,15 @@ def build_popover_view(app):
                 sub.setFrameOrigin_((name_x, 26))
                 row.addSubview_(sub)
 
-            # Error tap target (added before remove button so x_btn stays on top)
+            # Error tap target
             if status == STATUS_ERROR:
-                err_btn = HoverRow.alloc().initWithFrame_(NSMakeRect(0, 0, cw - 30, row_h))
+                err_btn = HoverRow.alloc().initWithFrame_(NSMakeRect(0, 0, cw + 4, row_h))
                 err_btn.setTag_(i)
                 err_btn.setTarget_(app); err_btn.setAction_(b"doShowError:")
                 row.addSubview_(err_btn)
 
-            # Remove button (last = highest z-order, always clickable)
-            x_btn = NSButton.alloc().initWithFrame_(NSMakeRect(cw - 20, (row_h - 20) // 2, 20, 20))
-            x_btn.setBordered_(False)
-            x_btn.setTitle_("\u00D7")
-            x_btn.setFont_(NSFont.systemFontOfSize_weight_(14, NSFontWeightLight))
-            x_btn.setContentTintColor_(NSColor.tertiaryLabelColor())
-            x_btn.setTag_(i)
-            x_btn.setTarget_(app); x_btn.setAction_(b"doRemoveFile:")
-            row.addSubview_(x_btn)
-
             root.addSubview_(row)
             y += row_h
-
-        # Add file button
-        y += 4
-        add_btn = NSButton.alloc().initWithFrame_(NSMakeRect(PAD + 4, y, 100, 24))
-        add_btn.setTitle_("+ Add file\u2026")
-        add_btn.setBordered_(False)
-        add_btn.setWantsLayer_(True)
-        add_btn.layer().setBackgroundColor_(pill_bg.CGColor())
-        add_btn.layer().setCornerRadius_(12)
-        add_btn.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
-        add_btn.setTarget_(app); add_btn.setAction_(b"doAddFile:")
-        add_btn.sizeToFit()
-        af = add_btn.frame()
-        add_btn.setFrameSize_(NSMakeSize(af.size.width + 20, 24))
-        add_btn.setFrameOrigin_((PAD + 4, y))
-        root.addSubview_(add_btn)
-        y += 30
 
     # ── Separator ──────────────────────────────────────────────
     y += 2
