@@ -503,6 +503,14 @@ def build_popover_view(app):
     title.setFrameOrigin_((PAD + 4, y))
     root.addSubview_(title)
 
+    # Quit button (power icon)
+    quit_btn = NSButton.alloc().initWithFrame_(NSMakeRect(PAD + cw - 52, y - 1, 22, 22))
+    quit_btn.setBordered_(False); quit_btn.setTitle_("")
+    qi = _sf_symbol("power", size=11, color=NSColor.tertiaryLabelColor())
+    if qi: quit_btn.setImage_(qi.image())
+    quit_btn.setTarget_(app); quit_btn.setAction_(b"doQuit:")
+    root.addSubview_(quit_btn)
+
     # Gear button
     gear = NSButton.alloc().initWithFrame_(NSMakeRect(PAD + cw - 26, y - 1, 22, 22))
     gear.setBordered_(False); gear.setTitle_("")
