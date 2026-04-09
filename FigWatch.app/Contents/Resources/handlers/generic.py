@@ -24,7 +24,7 @@ def _skill_cache_path():
 
 def _load_skill_cache():
     try:
-        with open(_skill_cache_path()) as f:
+        with open(_skill_cache_path(), encoding='utf-8') as f:
             return json.load(f)
     except Exception:
         return {}
@@ -32,7 +32,7 @@ def _load_skill_cache():
 
 def _save_skill_cache(cache):
     os.makedirs(os.path.join(_HOME, '.figwatch'), exist_ok=True)
-    with open(_skill_cache_path(), 'w') as f:
+    with open(_skill_cache_path(), 'w', encoding='utf-8') as f:
         json.dump(cache, f, indent=2)
 
 
@@ -137,7 +137,7 @@ def introspect_skill(skill_path, claude_path):
     }
 
     try:
-        with open(skill_path) as f:
+        with open(skill_path, encoding='utf-8') as f:
             skill_content = f.read()
     except Exception:
         return safe_default
@@ -204,7 +204,7 @@ def fetch_node_tree(file_key, node_id, pat):
         if not node:
             return None, None
         out_path = os.path.join(tempfile.gettempdir(), f'figwatch-tree-{node_id.replace(":", "-")}.json')
-        with open(out_path, 'w') as f:
+        with open(out_path, 'w', encoding='utf-8') as f:
             json.dump(node, f, indent=2)
         return out_path, node
     except Exception:
@@ -364,7 +364,7 @@ def execute_skill(item):
 
     data, tree_data = fetch_figma_data(required_data, item.file_key, item.node_id, item.pat)
 
-    with open(skill_path) as f:
+    with open(skill_path, encoding='utf-8') as f:
         skill_content = f.read()
 
     # Load reference files from the skill's references/ directory
@@ -377,7 +377,7 @@ def execute_skill(item):
             fpath = os.path.join(refs_dir, fname)
             if os.path.isfile(fpath) and fname.endswith('.md'):
                 try:
-                    with open(fpath) as f:
+                    with open(fpath, encoding='utf-8') as f:
                         ref_parts.append(f'--- {fname} ---\n{f.read()}')
                 except Exception:
                     pass
