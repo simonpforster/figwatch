@@ -1105,15 +1105,17 @@ class FigWatch(NSObject):
                     pass
 
     def _start_popover_refresh(self):
-        """Rebuild the popover every second while open. This thread does
-        the sleep, then dispatches the actual view rebuild to the main thread.
-        Powers both live status updates and the poll countdown timer."""
+        """Rebuild the popover every second while open. Uses waitUntilDone:True
+        because False doesn't deliver while a popover is showing in py2app."""
         def _loop():
             while self._state.get("popover_open"):
                 time.sleep(1)
                 if self._state.get("popover_open"):
-                    self.performSelectorOnMainThread_withObject_waitUntilDone_(
-                        b"_refreshTick:", None, False)
+                    try:
+                        self.performSelectorOnMainThread_withObject_waitUntilDone_(
+                            b"_refreshTick:", None, True)
+                    except Exception:
+                        pass
         threading.Thread(target=_loop, daemon=True).start()
 
     _last_popover_snapshot = None
