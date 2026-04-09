@@ -762,24 +762,18 @@ class FigWatch(NSObject):
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             b"doRefreshPopover:", None, False)
 
-        # Start polling timer for Figma file detection (every 10s)
-        self.performSelectorOnMainThread_withObject_waitUntilDone_(
-            b"_startSyncTimer:", None, False)
+        # Start polling for Figma file detection in a background thread
+        # (NSTimer on main thread wasn't firing reliably in py2app)
+        threading.Thread(target=self._sync_loop, daemon=True).start()
 
-    @objc.typedSelector(b"v@:@")
-    def _startSyncTimer_(self, _):
-        NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            10.0, self, b"_syncTick:", None, True)
-
-    @objc.typedSelector(b"v@:@")
-    def _syncTick_(self, _):
-        threading.Thread(target=self._safe_sync, daemon=True).start()
-
-    def _safe_sync(self):
-        try:
-            self._sync_watchers()
-        except Exception as e:
-            self._write_log(f'\u26a0\ufe0f Sync error: {e}')
+    def _sync_loop(self):
+        """Poll for Figma file changes every 10 seconds."""
+        while True:
+            time.sleep(10)
+            try:
+                self._sync_watchers()
+            except Exception as e:
+                self._write_log(f'\u26a0\ufe0f Sync error: {e}')
 
     def _sync_watchers(self):
         """Sync running watchers with currently open Figma files + manual watches."""
