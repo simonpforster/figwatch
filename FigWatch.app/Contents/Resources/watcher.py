@@ -1,38 +1,68 @@
-"""FigWatch comment watcher — polls Figma for @tone/@ux comments and responds."""
+"""FigWatch comment watcher — polls Figma for trigger comments and dispatches work items."""
 
 import json
 import math
 import os
+import queue
 import re
 import threading
 import urllib.parse
 import urllib.request
-
-from handlers.tone import tone_handler
-from handlers.ux import ux_handler
+from collections import namedtuple
 
 FIGMA_API = 'https://api.figma.com/v1'
 
-# ── Trigger routing ─────────────────────────────────────────────────
+# ── Status constants ───────────────────────────────────────────────
 
-HANDLERS = {
-    '@tone': {'handler': tone_handler, 'raw_mode': False},
-    '@ux':   {'handler': ux_handler,   'raw_mode': True},
-}
+STATUS_LIVE = 'live'
+STATUS_DETECTED = 'detected'
+STATUS_PROCESSING = 'processing'
+STATUS_REPLIED = 'replied'
+STATUS_ERROR = 'error'
+
+# ── WorkItem ───────────────────────────────────────────────────────
+
+WorkItem = namedtuple('WorkItem', [
+    'file_key', 'comment_id', 'reply_to_id', 'node_id',
+    'trigger', 'skill_path', 'user_handle', 'extra',
+    'locale', 'model', 'reply_lang', 'pat', 'claude_path', 'on_status',
+])
+
+# ── Trigger config ─────────────────────────────────────────────────
+
+DEFAULT_TRIGGERS = [
+    {"trigger": "@tone", "skill": "builtin:tone"},
+    {"trigger": "@ux", "skill": "builtin:ux"},
+]
 
 
-def match_handler(message):
+def load_trigger_config():
+    """Read triggers from ~/.figwatch/config.json, fall back to defaults."""
+    try:
+        config_path = os.path.join(os.path.expanduser('~'), '.figwatch', 'config.json')
+        with open(config_path) as f:
+            config = json.load(f)
+        triggers = config.get('triggers')
+        if triggers and isinstance(triggers, list):
+            return triggers
+    except Exception:
+        pass
+    return list(DEFAULT_TRIGGERS)
+
+
+def match_trigger(message, trigger_config):
+    """Match a comment message against configured triggers.
+
+    Returns {"trigger": str, "skill": str, "extra": str} or None.
+    """
     lower = message.lower().strip()
-    for trigger, entry in HANDLERS.items():
-        if trigger in lower:
-            idx = lower.index(trigger)
+    for entry in trigger_config:
+        trigger = entry.get('trigger', '')
+        if trigger and trigger.lower() in lower:
+            idx = lower.index(trigger.lower())
             extra = message[idx + len(trigger):].strip()
-            return {**entry, 'trigger': trigger, 'extra': extra}
+            return {'trigger': trigger, 'skill': entry.get('skill', ''), 'extra': extra}
     return None
-
-
-def list_triggers():
-    return list(HANDLERS.keys())
 
 
 # ── Figma REST API ──────────────────────────────────────────────────
@@ -103,12 +133,13 @@ def target_texts(node, all_texts, comment_meta):
             cy = t['y'] + t['h'] / 2
             return math.sqrt((pin_x - cx) ** 2 + (pin_y - cy) ** 2)
 
-        closest = min(all_texts, key=dist)
-        closest_dist = dist(closest)
+        # Compute distances once, reuse for min + sort
+        dists = [(t, dist(t)) for t in all_texts]
+        closest, closest_dist = min(dists, key=lambda x: x[1])
 
         if closest_dist < 200:
-            sorted_texts = sorted(all_texts, key=dist)
-            nearby = sorted_texts[:min(5, len(sorted_texts))]
+            dists.sort(key=lambda x: x[1])
+            nearby = [t for t, _ in dists[:min(5, len(dists))]]
             return {
                 'texts': nearby, 'targeted': True,
                 'target_name': closest['name'], 'primary_text': closest['text'],
@@ -142,7 +173,6 @@ def load_processed():
 
 
 def save_processed(ids):
-    # Prune to 500 most recent
     id_list = list(ids)
     if len(id_list) > 500:
         id_list = id_list[-500:]
@@ -152,16 +182,19 @@ def save_processed(ids):
         json.dump(id_list, f)
 
 
-# ── Polling ─────────────────────────────────────────────────────────
+# ── Trigger detection (fast path — 1 API call) ─────────────────────
 
 EM_DASH = '\u2014'
 
 
-def poll_once(file_key, pat, processed_ids, *, locale, claude_path, model='sonnet', reply_lang='en', log, on_reply=None):
+def detect_triggers(file_key, pat, processed_ids, trigger_config, *, log, on_status=None):
+    """Fetch comments, find trigger matches, return list[WorkItem].
+
+    Fast path: single API call, <1s. Does NOT call Claude.
+    """
     data = figma_get(f'/files/{file_key}/comments', pat)
     comments = data.get('comments', []) if data else []
 
-    # Build lookup
     comment_map = {c['id']: c for c in comments}
 
     # Find threads we already replied to
@@ -183,6 +216,8 @@ def poll_once(file_key, pat, processed_ids, *, locale, claude_path, model='sonne
             if EM_DASH + ' Claude' not in (c.get('message') or ''):
                 candidates.append(c)
 
+    initial_count = len(processed_ids)
+    items = []
     for comment in candidates:
         if comment['id'] in processed_ids:
             continue
@@ -191,14 +226,9 @@ def poll_once(file_key, pat, processed_ids, *, locale, claude_path, model='sonne
         if comment.get('parent_id') and comment['parent_id'] in replied_to:
             continue
 
-        match = match_handler(comment.get('message', ''))
+        match = match_trigger(comment.get('message', ''), trigger_config)
         if not match:
             continue
-
-        trigger = match['trigger']
-        handler = match['handler']
-        raw_mode = match['raw_mode']
-        extra = match['extra']
 
         node_id = (comment.get('client_meta') or {}).get('node_id')
         reply_to_id = comment['id']
@@ -213,95 +243,106 @@ def poll_once(file_key, pat, processed_ids, *, locale, claude_path, model='sonne
 
         processed_ids.add(comment['id'])
         user_handle = comment.get('user', {}).get('handle', 'unknown')
-        log(f'\U0001f4ac {trigger} comment by {user_handle} on node {node_id}')
 
-        # Post acknowledgment
-        ack_id = None
-        try:
-            ack = figma_post(f'/files/{file_key}/comments', {
-                'message': f'\u23f3 {trigger} audit received \u2014 Claude is working on it\u2026',
-                'comment_id': reply_to_id,
-            }, pat)
-            ack_id = ack.get('id')
-        except Exception:
-            pass
+        item = WorkItem(
+            file_key=file_key,
+            comment_id=comment['id'],
+            reply_to_id=reply_to_id,
+            node_id=node_id,
+            trigger=match['trigger'],
+            skill_path=match['skill'],
+            user_handle=user_handle,
+            extra=match['extra'],
+            locale=None,  # filled by caller
+            model=None,   # filled by caller
+            reply_lang=None,  # filled by caller
+            pat=pat,
+            claude_path=None,  # filled by caller
+            on_status=on_status,
+        )
+        items.append(item)
+        log(f'\U0001f4ac {match["trigger"]} comment by {user_handle} on node {node_id}')
 
-        try:
-            if raw_mode:
-                log(f'\U0001f4dd Running {trigger} audit...')
-                response = handler(
-                    node_id=node_id, file_key=file_key, pat=pat,
-                    extra=extra, claude_path=claude_path, model=model, reply_lang=reply_lang,
-                )
-            else:
-                enc_id = urllib.parse.quote(node_id, safe='')
-                node_data = figma_get(f'/files/{file_key}/nodes?ids={enc_id}&depth=100', pat)
-                node = (node_data or {}).get('nodes', {}).get(node_id, {}).get('document')
+    if len(processed_ids) > initial_count:
+        save_processed(processed_ids)
+    return items
 
-                if not node:
-                    log(f'\u26a0\ufe0f Could not fetch node {node_id}, skipping')
-                    continue
 
-                all_texts = extract_text_from_node(node)
-                if not all_texts:
-                    if ack_id:
-                        try: figma_delete(f'/files/{file_key}/comments/{ack_id}', pat)
-                        except Exception: pass
-                    figma_post(f'/files/{file_key}/comments', {
-                        'message': f'No text nodes found here. Place the comment on or near a text layer.\n\n{EM_DASH} Claude',
-                        'comment_id': reply_to_id,
-                    }, pat)
-                    continue
+# ── Work item processing (slow path — calls Claude) ────────────────
 
-                targeting = target_texts(node, all_texts, comment.get('client_meta'))
-                detected_locale = detect_locale(extra, locale)
-                log(f'\U0001f4dd Running {trigger} audit...')
+def process_work_item(item):
+    """Process a single WorkItem: post ack, run handler, post reply.
 
-                response = handler(
-                    texts=targeting['texts'], targeted=targeting['targeted'],
-                    target_name=targeting['target_name'], primary_text=targeting['primary_text'],
-                    locale=detected_locale, node_name=node.get('name', 'Unnamed frame'),
-                    extra=extra, claude_path=claude_path, model=model, reply_lang=reply_lang,
-                )
+    This is the slow path — runs on a worker thread.
+    """
+    from handlers.generic import execute_skill
 
-            # Delete ack, post response
-            if ack_id:
-                try: figma_delete(f'/files/{file_key}/comments/{ack_id}', pat)
-                except Exception: pass
+    file_key = item.file_key
+    pat = item.pat
+    reply_to_id = item.reply_to_id
+    trigger = item.trigger
+    node_id = item.node_id
 
-            # Figma API comment limit is ~5000 chars — truncate if needed
-            FIGMA_COMMENT_LIMIT = 4900
-            if len(response) > FIGMA_COMMENT_LIMIT:
-                truncated = response[:FIGMA_COMMENT_LIMIT - 60]
-                # Cut at last complete line
-                last_nl = truncated.rfind('\n')
-                if last_nl > FIGMA_COMMENT_LIMIT // 2:
-                    truncated = truncated[:last_nl]
-                response = truncated + f'\n\n(truncated \u2014 full audit was {len(response)} chars)\n\n{EM_DASH} Claude'
+    if item.on_status:
+        item.on_status(STATUS_PROCESSING, item)
 
-            figma_post(f'/files/{file_key}/comments', {
-                'message': response,
-                'comment_id': reply_to_id,
-            }, pat)
+    # Post acknowledgment
+    ack_id = None
+    try:
+        ack = figma_post(f'/files/{file_key}/comments', {
+            'message': f'\u23f3 {trigger} audit received \u2014 Claude is working on it\u2026',
+            'comment_id': reply_to_id,
+        }, pat)
+        ack_id = ack.get('id')
+    except Exception:
+        pass
 
-            log(f'\u2705 Replied to comment {comment["id"]}')
-            if on_reply:
-                on_reply(trigger, comment.get('user', {}).get('handle', ''), node_id)
+    try:
+        response = execute_skill(item)
 
-        except Exception as err:
-            if ack_id:
-                try: figma_delete(f'/files/{file_key}/comments/{ack_id}', pat)
-                except Exception: pass
-            log(f'\u274c Error processing comment {comment["id"]}: {err}')
+        # Delete ack, post response
+        if ack_id:
+            try:
+                figma_delete(f'/files/{file_key}/comments/{ack_id}', pat)
+            except Exception:
+                pass
 
-    save_processed(processed_ids)
+        # Figma API comment limit is ~5000 chars
+        FIGMA_COMMENT_LIMIT = 4900
+        if len(response) > FIGMA_COMMENT_LIMIT:
+            truncated = response[:FIGMA_COMMENT_LIMIT - 60]
+            last_nl = truncated.rfind('\n')
+            if last_nl > FIGMA_COMMENT_LIMIT // 2:
+                truncated = truncated[:last_nl]
+            response = truncated + f'\n\n(truncated \u2014 full audit was {len(response)} chars)\n\n{EM_DASH} Claude'
+
+        figma_post(f'/files/{file_key}/comments', {
+            'message': response,
+            'comment_id': reply_to_id,
+        }, pat)
+
+        if item.on_status:
+            item.on_status(STATUS_REPLIED, item)
+
+    except Exception as err:
+        if ack_id:
+            try:
+                figma_delete(f'/files/{file_key}/comments/{ack_id}', pat)
+            except Exception:
+                pass
+        if item.on_status:
+            item.on_status(STATUS_ERROR, item, error=str(err))
 
 
 # ── Watcher class ───────────────────────────────────────────────────
 
 class FigmaWatcher:
-    def __init__(self, file_key, pat, *, locale='uk', model='sonnet', reply_lang='en', interval=30,
-                 claude_path='claude', log=print, on_reply=None):
+    def __init__(self, file_key, pat, *, locale='uk', model='sonnet', reply_lang='en',
+                 interval=30, claude_path='claude', log=print,
+                 trigger_config=None, dispatch=None, on_poll=None, on_status=None,
+                 initial_delay=0,
+                 # Deprecated — use on_status instead
+                 on_reply=None):
         self.file_key = file_key
         self.pat = pat
         self.locale = locale
@@ -310,7 +351,12 @@ class FigmaWatcher:
         self.interval = interval
         self.claude_path = claude_path
         self.log = log
-        self.on_reply = on_reply
+        self.trigger_config = trigger_config or load_trigger_config()
+        self.dispatch = dispatch
+        self.on_poll = on_poll
+        self.on_status = on_status
+        self.initial_delay = initial_delay
+        self._on_reply = on_reply  # deprecated
         self._stop_event = threading.Event()
         self._thread = None
         self._processed = load_processed()
@@ -329,15 +375,42 @@ class FigmaWatcher:
     def is_alive(self):
         return self._thread is not None and self._thread.is_alive()
 
+    def reload_trigger_config(self, trigger_config):
+        """Hot-reload triggers without restart."""
+        self.trigger_config = trigger_config
+
     def _run(self):
-        self.log(f'\U0001f50d Watching {self.file_key} ({", ".join(list_triggers())})')
+        triggers_str = ', '.join(t.get('trigger', '') for t in self.trigger_config)
+        self.log(f'\U0001f50d Watching {self.file_key} ({triggers_str})')
+
+        if self.initial_delay > 0:
+            self._stop_event.wait(timeout=self.initial_delay)
+
         while not self._stop_event.is_set():
             try:
-                poll_once(
+                items = detect_triggers(
                     self.file_key, self.pat, self._processed,
-                    locale=self.locale, claude_path=self.claude_path, model=self.model, reply_lang=self.reply_lang,
-                    log=self.log, on_reply=self.on_reply,
+                    self.trigger_config, log=self.log, on_status=self.on_status,
                 )
+                for item in items:
+                    # Fill in caller-level fields
+                    item = item._replace(
+                        locale=self.locale,
+                        model=self.model,
+                        reply_lang=self.reply_lang,
+                        claude_path=self.claude_path,
+                        on_status=self.on_status,
+                    )
+                    if self.dispatch:
+                        self.dispatch(item)
+                    else:
+                        # No dispatcher — process inline (blocks the poll loop)
+                        process_work_item(item)
+                        if self._on_reply:
+                            self._on_reply(item.trigger, item.user_handle, item.node_id)
+
+                if self.on_poll:
+                    self.on_poll()
             except Exception as err:
                 self.log(f'\u26a0\ufe0f Poll error: {err}')
             self._stop_event.wait(timeout=self.interval)
@@ -359,7 +432,6 @@ if __name__ == '__main__':
     interval_idx = args.index('-i') if '-i' in args else -1
     interval = int(args[interval_idx + 1]) if interval_idx >= 0 and interval_idx + 1 < len(args) else 30
 
-    # Load PAT from config
     home = os.path.expanduser('~')
     pat = None
     for config_path in [
@@ -379,7 +451,6 @@ if __name__ == '__main__':
         print('\u274c No Figma PAT found in ~/.figwatch/config.json')
         sys.exit(1)
 
-    # Find claude
     claude_path = 'claude'
     for p in ['/opt/homebrew/bin/claude', '/usr/local/bin/claude']:
         if os.path.exists(p):

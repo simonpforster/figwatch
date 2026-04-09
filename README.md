@@ -1,19 +1,19 @@
 # FigWatch
 
-A macOS menu bar app that watches your Figma files and responds to `@tone` and `@ux` comments with AI-powered audits — powered by Claude Code.
+A macOS menu bar app that watches your Figma files and responds to trigger comments with AI-powered audits — powered by Claude Code.
 
-Drop a comment like `@tone` or `@ux` on any frame in Figma, and FigWatch replies with a detailed audit directly in the comment thread.
+Drop a comment like `@tone` or `@ux` on any frame in Figma, and FigWatch replies with a detailed audit directly in the comment thread. Add your own skills to create custom triggers.
 
 ## Features
 
-- **@tone** — Tone of Voice audit against locale-specific guidelines (UK, DE, FR, NL, Benelux). Flags unnatural copy, hype language, incorrect currency formatting, punctuation issues, and glossary violations. Suggests fixes inline.
-- **@ux** — Nielsen's 10 Usability Heuristics evaluation. Takes a screenshot and reads the node tree of the target frame, then evaluates all 10 heuristics with severity scores and specific recommendations.
-- **Auto-detect open Figma files** via Chrome DevTools Protocol — automatically relaunches Figma with CDP enabled if needed, so there's nothing to configure.
+- **Multi-file watching** — watch as many Figma files as you want simultaneously, each with live status indicators in the popover.
+- **Configurable triggers** — `@tone` and `@ux` are built in. Add your own triggers backed by any Claude skill file (`.md`).
+- **Generic skill execution** — any skill that can produce a plain-text comment reply works. FigWatch introspects the skill to determine what Figma data it needs (screenshot, node tree, text nodes, variables, styles, etc.) and fetches only what's required.
+- **Concurrent workers** — tone and UX audits run on separate worker queues. Configure the number of concurrent workers per queue in Settings.
 - **Immediate acknowledgment** — posts a "working on it" reply while Claude processes the audit.
-- **Locale selector** — switch between UK, DE, FR, NL, and Benelux from the menu bar dropdown.
-- **Auto-restart** — if the watcher crashes, FigWatch restarts it automatically.
+- **Locale selector** — switch between UK, DE, FR, NL, and Benelux from the menu bar dropdown. The locale is passed to all skills.
 - **macOS notifications** — get notified when audits are posted.
-- **Recent files** — quickly reconnect to previously watched files.
+- **In-app updates** — check for and install updates directly from Settings.
 
 ## Install
 
@@ -37,17 +37,43 @@ This downloads the latest release, installs `FigWatch.app` to `/Applications`, c
 - macOS 13+
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code/getting-started)
 - Figma Personal Access Token
-- Figma Desktop (recommended, for file detection + screenshots)
 
 ## How it works
 
-1. Open a file in Figma Desktop
-2. Click the FigWatch icon in your menu bar and select the file
+1. Click the FigWatch icon in your menu bar
+2. Paste a Figma file URL and click **Watch** (or use **+ Add file** to watch more)
 3. Leave a comment on any frame:
    - `@tone` — runs a Tone of Voice audit for the selected locale
    - `@tone de` — runs a ToV audit using German guidelines (overrides the locale selector)
    - `@ux` — runs a UX heuristic evaluation with screenshot analysis
+   - `@yourtrigger` — runs whatever custom skill you've configured
 4. FigWatch polls for new comments every 30 seconds, picks up the trigger, and posts the audit as a reply
+
+## Built-in triggers
+
+| Trigger | Skill | What it does |
+|---------|-------|-------------|
+| `@tone` | `skills/tone/skill.md` | Tone of Voice audit against locale-specific guidelines (UK, DE, FR, NL, Benelux). Flags unnatural copy, hype language, incorrect currency formatting, punctuation issues, and glossary violations. |
+| `@ux` | `skills/ux/skill.md` | Nielsen's 10 Usability Heuristics evaluation. Takes a screenshot and reads the node tree, then evaluates all 10 heuristics with severity scores and recommendations. |
+
+## Custom triggers
+
+Add your own triggers in **Settings → Triggers → + Add**:
+
+1. Choose a trigger keyword (e.g. `@a11y`)
+2. Point it at a skill file (any `.md` file that instructs Claude what to do)
+3. FigWatch introspects the skill to determine what Figma data it needs
+4. Hot-reloads on all active watchers — no restart required
+
+Skills can request any combination of:
+- **Frame-scoped:** `screenshot`, `node_tree`, `text_nodes`, `prototype_flows`, `dev_resources`, `annotations`
+- **File-scoped:** `variables_local`, `variables_published`, `styles`, `components`, `file_structure`
+
+Skill files are searched in:
+1. `~/.claude/skills/`
+2. `.claude/skills/` (cwd)
+3. `~/.figwatch/skills/`
+4. The app bundle's `Resources/skills/`
 
 ## Supported locales
 
@@ -63,49 +89,73 @@ This downloads the latest release, installs `FigWatch.app` to `/Applications`, c
 
 FigWatch stores its config in `~/.figwatch/`:
 
-- `config.json` — Figma PAT and settings
-- `recent-watches.json` — recently watched files
-- `.processed-comments.json` — tracks which comments have been handled
+| File | Purpose |
+|------|---------|
+| `config.json` | Figma PAT, model, locale, triggers, worker counts |
+| `watched-files.json` | Files currently being watched |
+| `skill-cache.json` | Cached skill introspection results |
+| `.processed-comments.json` | Tracks which comments have been handled |
 
-## What's new in v1.1.5
+## Architecture (v1.2)
 
-- **Fix "Claude not installed" false positive** — the claude CLI path is now re-resolved on every dependency check instead of being cached once at launch. If you install Claude Code after starting FigWatch (or if claude lives in a non-standard location like `~/.local/bin`, `~/.volta/bin`, `~/.bun/bin`, etc.), FigWatch will now pick it up automatically. Falls back to searching an augmented PATH with `shutil.which` if none of the common paths match.
-- **Onboarding checklist stays put until setup is actually done** — `claude auth status` exits 0 even when you're not signed in, so FigWatch was incorrectly marking Claude Login as complete and hiding the checklist after a single view. It now parses the JSON `loggedIn` field, so the three required steps (Claude Code, Claude Login, Figma Token) persist in the onboarding panel until they're genuinely finished.
-- **Fix `@ux` hanging and returning "Unable to generate evaluation"** — Claude Code 2.1.72 needs `--add-dir` in addition to `--allowedTools Read` to actually read files outside the CWD. Without it, Claude would hit an interactive permission prompt for the `/tmp/figwatch-*` screenshot and node-tree files and block until the 120-second timeout killed it. FigWatch now passes `--add-dir /tmp` so the audit runs through cleanly.
-- **Surface Figma API errors instead of "Could not locate the commented frame"** — `_figma_get` now retries once on 429 (honoring `Retry-After`) and records the real HTTP error. When frame resolution fails, the reply now says "rate limited, try again in a minute" or "token missing file_content:read scope" instead of a generic not-found message.
-- **Strip stale handler `.pyc` from `lib/python39.zip`** — py2app was bundling compiled `handlers/*.pyc` files that Python's import machinery preferred over the loose `.py` files on disk. Any bug fix to a handler shipped after the initial build was silently ignored until the `.pyc` got regenerated. These entries are now removed from the shipped zip, so handler fixes take effect immediately.
+```
+FigWatch.py          Menu bar app (PyObjC) — UI, state, worker queues
+  ↓
+watcher.py           FigmaWatcher per file — polls comments, detects triggers, dispatches WorkItems
+  ↓
+handlers/generic.py  Resolves skills, fetches Figma data, runs Claude, posts replies
+  ↓
+handlers/__init__.py  Shared utilities (strip_markdown, subprocess_env, figma_get_retry, etc.)
+  ↓
+skills/              Bundled skill definitions (.md) + reference files
+```
 
-## What's new in v1.1.4
+- **No hardcoded handlers** — all triggers (including built-in `@tone` and `@ux`) route through the same generic skill execution pipeline.
+- **Fast path / slow path split** — `detect_triggers()` is a single API call (<1s). `process_work_item()` runs on worker threads and can take 30-120s.
+- **Multi-file, multi-worker** — each watched file gets its own `FigmaWatcher` thread. Work items are dispatched to shared queues processed by configurable worker pools.
 
-- **Real in-app auto-update** — clicking "Check for Updates" now offers an **Install & Restart** button that downloads the new build, swaps `/Applications/FigWatch.app` in place, clears Gatekeeper quarantine, and relaunches FigWatch. No more manual drag-to-Applications on every release.
+## What's new in v1.2.0
 
-## What's new in v1.1.3
+- **Multi-file watching** — watch multiple Figma files simultaneously with live status indicators (live, processing, replied, error) per file. No more CDP/Chrome DevTools dependency — just paste a URL.
+- **Configurable triggers** — add custom `@trigger` keywords backed by any skill file. Hot-reload without restart.
+- **Generic skill execution** — all triggers (including built-in `@tone` and `@ux`) run through a single pipeline. Skills are introspected to determine what data they need, fetched in parallel, and executed via Claude.
+- **Worker queues** — tone and UX audits run concurrently on separate worker pools. Configure worker counts in Settings (1-5 each).
+- **Skill introspection cache** — custom skills are analysed once via Haiku to determine compatibility and data requirements. Built-in skills use pre-seeded cache data.
+- **Removed CDP dependency** — no more Chrome DevTools Protocol, no more auto-relaunching Figma, no more port 9222. File detection is now URL-based.
+- **Removed dedicated handlers** — `handlers/tone.py` and `handlers/ux.py` replaced by generic skill execution. The skill `.md` files are the single source of truth.
 
-- **Fix "Unable to generate audit" on Apple Silicon** — `@tone` and `@ux` handlers now pass an augmented `PATH` to the `claude` subprocess so it can find `node` in `/opt/homebrew/bin`. Previously, macOS gave .app bundles a minimal PATH, so Claude Code couldn't locate its Node.js runtime when spawned from FigWatch and died silently.
-- **Surface claude errors in audits** — when an audit fails, the reply now includes the actual stderr from `claude` instead of a bare "Unable to generate audit." line, so failures are self-diagnosing.
+<details>
+<summary>Previous releases</summary>
 
-## What's new in v1.1.2
+### v1.1.5
 
-- **Check for Updates** — new button in the Settings panel that checks the latest release on GitHub and opens the release page when an update is available.
-- **Watch from URL** — paste a Figma file link directly when auto-detect can't see your file. Recent Figma Desktop builds (v126+) no longer expose the remote-debugging port, which broke auto-detect for some users; this gives you a manual path that always works.
-- **Fixed Figma relaunch loop** — FigWatch will no longer quit and reopen Figma every 30 seconds when CDP isn't reachable. Auto-relaunch is now one-shot per session.
-- Fixed the Disconnect button overlapping long file names in the header.
-- Reply language setting — `@tone` and `@ux` can now reply in Chinese (简体中文) in addition to the source locale.
-- Refreshed AI model labels (Sonnet, Opus, Haiku) — version numbers dropped in the settings dropdown.
+- Fix "Claude not installed" false positive — claude CLI path re-resolved on every dep check.
+- Onboarding checklist stays put until setup is actually done — parses JSON `loggedIn` field.
+- Fix `@ux` hanging — passes `--add-dir /tmp` so Claude can read screenshot/tree files.
+- Surface Figma API errors instead of generic "not found" messages.
+- Strip stale `.pyc` from `lib/python39.zip`.
 
-## What's new in v1.1.1
+### v1.1.4
 
-- **Settings panel** — new gear icon in the footer opens a settings dialog with Figma token management and AI model switching (Sonnet, Opus, Haiku). Model choice is persisted and auto-restarts the watcher.
-- **Auto-CDP** — FigWatch now auto-relaunches Figma Desktop with CDP debugging enabled if it detects Figma is running without it — no manual `--remote-debugging-port=9222` flag needed.
-- `@ux` audits now reply as plain-text Figma comments (like `@tone`), instead of generating a separate `.md` report file.
+- Real in-app auto-update — Install & Restart button downloads, swaps, and relaunches.
 
-## What's new in v1.1.0
+### v1.1.3
 
-- Watcher rewritten in pure Python (no Node.js dependency)
-- App bundle shrunk from 129MB to 24MB (81% smaller)
-- Onboarding: Claude Login check, better error feedback
-- macOS notifications on audit completion and token validation
-- Empty file list shows guidance
+- Fix "Unable to generate audit" on Apple Silicon — augmented PATH for subprocess calls.
+
+### v1.1.2
+
+- Check for Updates button. Watch from URL fallback. Fixed Figma relaunch loop. Reply language setting (Chinese). Refreshed model labels.
+
+### v1.1.1
+
+- Settings panel. Auto-CDP relaunch. `@ux` replies as plain-text comments.
+
+### v1.1.0
+
+- Watcher rewritten in pure Python. App bundle shrunk 81%. Onboarding improvements.
+
+</details>
 
 ## License
 
