@@ -981,10 +981,11 @@ class FigWatch(NSObject):
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             b"setIconActive:", active, False)
 
+    _refresh_pending = False
+
     def _schedule_refresh(self):
-        """Refresh the popover on the main thread if it's open."""
-        self.performSelectorOnMainThread_withObject_waitUntilDone_(
-            b"doRefreshPopover:", None, False)
+        """Flag that the popover needs rebuilding. The refresh loop picks it up."""
+        self._refresh_pending = True
 
     # ── Icon ───────────────────────────────────────────────────
 
@@ -1044,25 +1045,49 @@ class FigWatch(NSObject):
         if self.popover.isShown():
             self._close_popover()
             return
-        # Always build a fresh view
-        view, h = self._build_current_view()
-        vc = NSViewController.alloc().init()
-        vc.setView_(view)
-        self.popover.setContentViewController_(vc)
-        self.popover.setContentSize_(NSMakeSize(W, h))
-        try:
-            self.popover.showRelativeToRect_ofView_preferredEdge_(
-                sender.bounds(), sender, NSMinYEdge)
-        except Exception:
-            return
+        self._state["popover_anchor"] = sender
+        self._show_popover()
         # Remove any stale monitor before adding a new one
         self._remove_event_monitor()
         self._state["event_monitor"] = NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(
             NSLeftMouseDownMask | NSRightMouseDownMask,
             lambda event: self._close_popover()
         )
+        # Start a refresh loop while the popover is open
+        self._start_popover_refresh()
+
+    def _show_popover(self):
+        """Build and show (or rebuild) the popover."""
+        sender = self._state.get("popover_anchor")
+        if not sender:
+            return
+        view, h = self._build_current_view()
+        vc = NSViewController.alloc().init()
+        vc.setView_(view)
+        self.popover.setContentViewController_(vc)
+        self.popover.setContentSize_(NSMakeSize(W, h))
+        if not self.popover.isShown():
+            try:
+                self.popover.showRelativeToRect_ofView_preferredEdge_(
+                    sender.bounds(), sender, NSMinYEdge)
+            except Exception:
+                pass
+
+    def _start_popover_refresh(self):
+        """Run a 1-second refresh loop while the popover is open."""
+        self._state["popover_open"] = True
+        def _loop():
+            while self._state.get("popover_open"):
+                time.sleep(1)
+                if self._refresh_pending and self._state.get("popover_open"):
+                    self._refresh_pending = False
+                    self.performSelectorOnMainThread_withObject_waitUntilDone_(
+                        b"doRefreshPopover:", None, True)
+        threading.Thread(target=_loop, daemon=True).start()
 
     def _close_popover(self):
+        self._state["popover_open"] = False
+        self._state["popover_anchor"] = None
         try:
             if self.popover.isShown():
                 self.popover.close()
@@ -1089,11 +1114,7 @@ class FigWatch(NSObject):
     def doRefreshPopover_(self, _):
         if not self.popover.isShown():
             return
-        view, h = self._build_current_view()
-        vc = NSViewController.alloc().init()
-        vc.setView_(view)
-        self.popover.setContentViewController_(vc)
-        self.popover.setContentSize_(NSMakeSize(W, h))
+        self._show_popover()
 
     # ── File Actions ───────────────────────────────────────────
 
