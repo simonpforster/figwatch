@@ -513,8 +513,8 @@ def build_popover_view(app):
 
     # Triggers explanation
     trigger_config = app._state.get("trigger_config", [])
-    triggers_str = ", ".join(t.get("trigger", "") for t in trigger_config) if trigger_config else "@tone, @ux"
-    subline = _label(f"Listening for {triggers_str} triggers", size=11, color=NSColor.secondaryLabelColor())
+    triggers_str = " \u00B7 ".join(t.get("trigger", "") for t in trigger_config) if trigger_config else "@tone \u00B7 @ux"
+    subline = _label(triggers_str, size=11, color=NSColor.secondaryLabelColor())
     subline.setFrameOrigin_((PAD + 4, y))
     root.addSubview_(subline)
     y += 20
