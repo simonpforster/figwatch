@@ -1341,10 +1341,10 @@ class FigWatch(NSObject):
             h = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 22))
             icon = _sf_symbol(icon_name, size=12, color=NSColor.secondaryLabelColor())
             if icon:
-                icon.setFrameOrigin_((0, 3))
+                icon.setFrameOrigin_((0, 4))
                 h.addSubview_(icon)
             lbl = _label(title, size=12, weight=NSFontWeightSemibold)
-            lbl.setFrameOrigin_((20, 2))
+            lbl.setFrameOrigin_((20, 3))
             h.addSubview_(lbl)
             if trailing_btn:
                 tf = trailing_btn.frame()
@@ -1390,21 +1390,21 @@ class FigWatch(NSObject):
             ck = _sf_symbol("checkmark.circle.fill" if is_ok else "exclamationmark.circle.fill",
                             size=12, color=NSColor.secondaryLabelColor())
             if ck:
-                ck.setFrameOrigin_((0, 5))
+                ck.setFrameOrigin_((0, 6))
                 row.addSubview_(ck)
 
             tw = _label(trigger_word, size=13, weight=NSFontWeightMedium, mono=True)
-            tw.setFrameOrigin_((20, 5))
+            tw.setFrameOrigin_((20, 6))
             row.addSubview_(tw)
 
             sn = _label(display, size=11, color=NSColor.secondaryLabelColor())
-            sn.setFrameOrigin_((100, 7))
+            sn.setFrameOrigin_((100, 8))
             sn.setFrameSize_(NSMakeSize(SW - 130, 14))
             sn.cell().setLineBreakMode_(5)
             row.addSubview_(sn)
 
             if not builtin:
-                rm = NSButton.alloc().initWithFrame_(NSMakeRect(SW - 20, 5, 18, 18))
+                rm = NSButton.alloc().initWithFrame_(NSMakeRect(SW - 20, 6, 18, 18))
                 rm.setBordered_(False); rm.setTitle_("")
                 rm_icon = _sf_symbol("xmark.circle", size=12, color=NSColor.tertiaryLabelColor())
                 if rm_icon: rm.setImage_(rm_icon.image())
@@ -1428,12 +1428,12 @@ class FigWatch(NSObject):
             conn_icon = _sf_symbol("xmark.circle", size=12, color=NSColor.secondaryLabelColor())
             conn_text = "Not connected"
 
-        conn_row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 18))
+        conn_row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 20))
         if conn_icon:
-            conn_icon.setFrameOrigin_((0, 1))
+            conn_icon.setFrameOrigin_((0, 2))
             conn_row.addSubview_(conn_icon)
         conn_lbl = _label(conn_text, size=13)
-        conn_lbl.setFrameOrigin_((20, 0))
+        conn_lbl.setFrameOrigin_((20, 2))
         conn_row.addSubview_(conn_lbl)
         acc.addSubview_(conn_row)
         y += 22
