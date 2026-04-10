@@ -1313,50 +1313,36 @@ class FigWatch(NSObject):
         alert.addButtonWithTitle_("Save")
         alert.addButtonWithTitle_("Cancel")
 
-        SW = 380  # settings width
+        SW = 360  # settings width
+        DW = 160  # dropdown width (consistent)
         acc = FlippedView.alloc().initWithFrame_(NSMakeRect(0, 0, SW, 600))
         y = 0
         config = _load_config()
 
-        def _section_header(title, icon_name=None):
+        def _section(title):
             nonlocal y
             if y > 0:
-                y += 6
+                y += 10
                 sep = NSBox.alloc().initWithFrame_(NSMakeRect(0, y, SW, 1))
                 sep.setBoxType_(2)
                 acc.addSubview_(sep)
-                y += 12
-            h = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 16))
-            if icon_name:
-                icon = _sf_symbol(icon_name, size=11, color=NSColor.secondaryLabelColor())
-                if icon:
-                    icon.setFrameOrigin_((0, 0))
-                    h.addSubview_(icon)
-            lbl = _label(title.upper(), size=10, weight=NSFontWeightSemibold,
-                         color=NSColor.secondaryLabelColor())
-            lbl.setFrameOrigin_((18 if icon_name else 0, 1))
-            h.addSubview_(lbl)
-            acc.addSubview_(h)
-            y += 22
-
-        def _setting_row(label_text, control, hint_text=None):
-            nonlocal y
-            lbl = _label(label_text, size=12)
-            lbl.setFrameOrigin_((0, y + 2))
+                y += 14
+            lbl = _label(title, size=13, weight=NSFontWeightSemibold)
+            lbl.setFrameOrigin_((0, y))
             acc.addSubview_(lbl)
-            control.setFrameOrigin_((SW - control.frame().size.width, y))
-            acc.addSubview_(control)
-            y += 28
-            if hint_text:
-                ht = _label(hint_text, size=10, color=NSColor.tertiaryLabelColor())
-                ht.setFrameOrigin_((0, y - 6))
-                acc.addSubview_(ht)
-                y += 12
+            y += 24
 
-        # ═══════════════════════════════════════════════════════════
-        # TRIGGERS (top priority)
-        # ═══════════════════════════════════════════════════════════
-        _section_header("Triggers", "bolt.fill")
+        def _row(label_text, control):
+            nonlocal y
+            lbl = _label(label_text, size=12, color=NSColor.secondaryLabelColor())
+            lbl.setFrameOrigin_((0, y + 3))
+            acc.addSubview_(lbl)
+            control.setFrameOrigin_((0, y + 20))
+            acc.addSubview_(control)
+            y += 48
+
+        # ── Triggers ──────────────────────────────────────────
+        _section("Triggers")
 
         trigger_config = self._state.get("trigger_config", [])
         intro_results = self._state.get("introspection_results", {})
@@ -1367,31 +1353,22 @@ class FigWatch(NSObject):
             builtin = skill_name.startswith("builtin:")
             display = f"{skill_name.replace('builtin:', '')} (built-in)" if builtin else os.path.basename(skill_name)
 
-            row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 26))
-
-            # Compatibility icon (SF symbol)
-            intro = intro_results.get(skill_name)
-            is_ok = builtin or (intro and intro.get("comment_compatible"))
-            badge_icon = _sf_symbol("checkmark.circle.fill", size=12,
-                                    color=NSColor.systemGreenColor() if is_ok else NSColor.systemOrangeColor())
-            if badge_icon:
-                badge_icon.setFrameOrigin_((0, 4))
-                row.addSubview_(badge_icon)
+            row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 28))
 
             tw = _label(trigger_word, size=13, weight=NSFontWeightMedium, mono=True)
-            tw.setFrameOrigin_((20, 4))
+            tw.setFrameOrigin_((0, 5))
             row.addSubview_(tw)
 
-            sn = _label(display, size=11, color=NSColor.secondaryLabelColor())
-            sn.setFrameOrigin_((90, 6))
-            sn.setFrameSize_(NSMakeSize(SW - 120, 14))
+            sn = _label(display, size=11, color=NSColor.tertiaryLabelColor())
+            sn.setFrameOrigin_((80, 7))
+            sn.setFrameSize_(NSMakeSize(SW - 110, 14))
             sn.cell().setLineBreakMode_(5)
             row.addSubview_(sn)
 
             if not builtin:
-                rm_icon = _sf_symbol("xmark.circle.fill", size=12, color=NSColor.tertiaryLabelColor())
-                rm = NSButton.alloc().initWithFrame_(NSMakeRect(SW - 24, 3, 20, 20))
+                rm = NSButton.alloc().initWithFrame_(NSMakeRect(SW - 20, 4, 18, 18))
                 rm.setBordered_(False); rm.setTitle_("")
+                rm_icon = _sf_symbol("xmark", size=9, color=NSColor.tertiaryLabelColor())
                 if rm_icon: rm.setImage_(rm_icon.image())
                 rm.setTag_(i)
                 rm.setTarget_(self); rm.setAction_(b"doRemoveTrigger:")
@@ -1400,113 +1377,88 @@ class FigWatch(NSObject):
             acc.addSubview_(row)
             y += 28
 
-        # Add trigger button
-        add_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, y, SW, 26))
-        add_btn.setBordered_(False)
-        add_btn.setTitle_("")
-        add_icon = _sf_symbol("plus.circle.fill", size=12, color=NSColor.controlAccentColor())
-        add_row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 26))
-        if add_icon:
-            add_icon.setFrameOrigin_((0, 4))
-            add_row.addSubview_(add_icon)
-        add_lbl = _label("Add trigger", size=12, color=NSColor.controlAccentColor())
-        add_lbl.setFrameOrigin_((20, 5))
+        # Add trigger
+        add_row = HoverRow.alloc().initWithFrame_(NSMakeRect(-4, y, SW + 8, 28))
+        add_row.setTarget_(self); add_row.setAction_(b"doAddTrigger:")
+        add_lbl = _label("Add trigger...", size=12, color=NSColor.secondaryLabelColor())
+        add_lbl.setFrameOrigin_((4, 6))
         add_row.addSubview_(add_lbl)
-        # Make the whole row clickable
-        add_hit = HoverRow.alloc().initWithFrame_(NSMakeRect(0, 0, SW, 26))
-        add_hit.setTarget_(self); add_hit.setAction_(b"doAddTrigger:")
-        add_row.addSubview_(add_hit)
         acc.addSubview_(add_row)
-        y += 30
+        y += 32
 
-        # ═══════════════════════════════════════════════════════════
-        # FIGMA CONNECTION
-        # ═══════════════════════════════════════════════════════════
-        _section_header("Figma Connection", "link")
+        # ── Connection ────────────────────────────────────────
+        _section("Connection")
 
-        # Show connection status instead of raw token
         user = self._state.get("user")
         if user and self._state.get("pat"):
-            status_icon = _sf_symbol("checkmark.circle.fill", size=12, color=NSColor.systemGreenColor())
-            status_text = _label(f"Connected as {user}", size=12)
+            conn_text = f"Connected as {user}"
         else:
-            status_icon = _sf_symbol("xmark.circle.fill", size=12, color=NSColor.systemRedColor())
-            status_text = _label("Not connected", size=12)
+            conn_text = "Not connected"
+        conn_lbl = _label(conn_text, size=12)
+        conn_lbl.setFrameOrigin_((0, y + 2))
+        acc.addSubview_(conn_lbl)
 
-        if status_icon:
-            status_icon.setFrameOrigin_((0, y + 3))
-            acc.addSubview_(status_icon)
-        status_text.setFrameOrigin_((20, y + 2))
-        acc.addSubview_(status_text)
-
-        # Change token button (right-aligned)
-        tok_btn = NSButton.alloc().initWithFrame_(NSMakeRect(SW - 100, y, 100, 22))
-        tok_btn.setTitle_("Change Token")
+        tok_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, y + 22, 110, 22))
+        tok_btn.setTitle_("Change token...")
         tok_btn.setBezelStyle_(NSBezelStyleRecessed)
         tok_btn.setControlSize_(1)
-        tok_btn.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
+        tok_btn.setFont_(NSFont.systemFontOfSize_(11))
         tok_btn.setTarget_(self); tok_btn.setAction_(b"doToken:")
         acc.addSubview_(tok_btn)
-        y += 28
+        y += 50
 
-        # Hidden token field — stored for save logic but not shown
+        # Hidden token field for save logic
         tok_input = NSTextField.alloc().initWithFrame_(NSMakeRect(0, -100, 0, 0))
         if self._state.get("pat"):
             tok_input.setStringValue_(self._state["pat"])
         acc.addSubview_(tok_input)
 
-        # ═══════════════════════════════════════════════════════════
-        # AI MODEL
-        # ═══════════════════════════════════════════════════════════
-        _section_header("AI Model", "cpu")
+        # ── Model ─────────────────────────────────────────────
+        _section("Model")
 
-        model_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, 180, 24), False)
-        model_popup.addItemWithTitle_("Sonnet (fast, recommended)")
+        model_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, DW, 24), False)
+        model_popup.addItemWithTitle_("Sonnet (recommended)")
         model_popup.addItemWithTitle_("Opus (most capable)")
-        model_popup.addItemWithTitle_("Haiku (fastest, cheapest)")
+        model_popup.addItemWithTitle_("Haiku (cheapest)")
         model_map = {"sonnet": 0, "opus": 1, "haiku": 2}
         model_popup.selectItemAtIndex_(model_map.get(self._state.get("model", "sonnet"), 0))
-        _setting_row("Model", model_popup)
+        _row("AI model", model_popup)
 
-        lang_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, 120, 24), False)
+        lang_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, DW, 24), False)
         lang_popup.addItemWithTitle_("English")
         lang_popup.addItemWithTitle_("\u4e2d\u6587 (Chinese)")
         lang_map = {"en": 0, "cn": 1}
         lang_popup.selectItemAtIndex_(lang_map.get(self._state.get("reply_lang", "en"), 0))
-        _setting_row("Reply language", lang_popup)
+        _row("Reply language", lang_popup)
 
-        # ═══════════════════════════════════════════════════════════
-        # ADVANCED
-        # ═══════════════════════════════════════════════════════════
-        _section_header("Advanced", "slider.horizontal.3")
+        # ── Workers ───────────────────────────────────────────
+        _section("Workers")
 
-        tone_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, 60, 24), False)
+        tone_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, DW, 24), False)
         for n in range(1, 6): tone_popup.addItemWithTitle_(str(n))
         tone_popup.selectItemAtIndex_(config.get("workersTone", 2) - 1)
-        _setting_row("Tone workers", tone_popup, "Concurrent @tone audits")
+        _row("Tone workers", tone_popup)
 
-        ux_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, 60, 24), False)
+        ux_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(0, 0, DW, 24), False)
         for n in range(1, 6): ux_popup.addItemWithTitle_(str(n))
         ux_popup.selectItemAtIndex_(config.get("workersUx", 1) - 1)
-        _setting_row("UX workers", ux_popup, "Concurrent @ux audits")
+        _row("UX workers", ux_popup)
 
-        # ═══════════════════════════════════════════════════════════
-        # ABOUT
-        # ═══════════════════════════════════════════════════════════
-        _section_header("About", "info.circle")
+        # ── About ─────────────────────────────────────────────
+        _section("About")
 
-        ver = _label(f"FigWatch v{VERSION}", size=12, color=NSColor.secondaryLabelColor())
+        ver = _label(f"FigWatch v{VERSION}", size=12, color=NSColor.tertiaryLabelColor())
         ver.setFrameOrigin_((0, y + 2))
         acc.addSubview_(ver)
 
-        upd_btn = NSButton.alloc().initWithFrame_(NSMakeRect(SW - 130, y, 130, 22))
-        upd_btn.setTitle_("Check for Updates")
+        upd_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, y + 22, 130, 22))
+        upd_btn.setTitle_("Check for updates...")
         upd_btn.setBezelStyle_(NSBezelStyleRecessed)
         upd_btn.setControlSize_(1)
-        upd_btn.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
+        upd_btn.setFont_(NSFont.systemFontOfSize_(11))
         upd_btn.setTarget_(self); upd_btn.setAction_(b"doCheckUpdate:")
         acc.addSubview_(upd_btn)
-        y += 28
+        y += 50
 
         # Finalize
         acc.setFrameSize_(NSMakeSize(SW, y))
