@@ -1307,14 +1307,9 @@ class FigWatch(NSObject):
     def doSettings_(self, sender):
         self._close_popover()
         NSApp.activateIgnoringOtherApps_(True)
-        alert = NSAlert.alloc().init()
-        alert.setMessageText_("Settings")
-        alert.setInformativeText_("")
-        alert.setIcon_(NSImage.alloc().initWithSize_(NSMakeSize(1, 1)))
-        alert.addButtonWithTitle_("Save")
-        alert.addButtonWithTitle_("Cancel")
 
-        SW = 340
+        SW = 300
+        PAD_S = 16
         acc = FlippedView.alloc().initWithFrame_(NSMakeRect(0, 0, SW, 700))
         y = 0
         config = _load_config()
@@ -1361,6 +1356,12 @@ class FigWatch(NSObject):
             control.setFrameOrigin_((SW - cf.size.width, y))
             acc.addSubview_(control)
             y += 28
+
+        # ── Title ──────────────────────────────────────────────
+        stitle = _label("Settings", size=16, weight=NSFontWeightBold)
+        stitle.setFrameOrigin_((0, y))
+        acc.addSubview_(stitle)
+        y += 26
 
         # ── Triggers ──────────────────────────────────────────
         _section("Triggers", "bolt.fill")
@@ -1485,10 +1486,99 @@ class FigWatch(NSObject):
         acc.addSubview_(upd_btn)
         y += 30
 
-        acc.setFrameSize_(NSMakeSize(SW, y))
-        alert.setAccessoryView_(acc)
+        # ── Save / Cancel ─────────────────────────────────────
+        y += 4
+        sep_btm = NSBox.alloc().initWithFrame_(NSMakeRect(0, y, SW, 1))
+        sep_btm.setBoxType_(2)
+        acc.addSubview_(sep_btm)
+        y += 10
 
-        if alert.runModal() == NSAlertFirstButtonReturn:
+        btn_w = (SW - 8) // 2
+        cancel_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, y, btn_w, 30))
+        cancel_btn.setTitle_("Cancel")
+        cancel_btn.setBordered_(False)
+        cancel_btn.setWantsLayer_(True)
+        cancel_btn.layer().setBackgroundColor_(
+            NSColor.labelColor().colorWithAlphaComponent_(0.06).CGColor())
+        cancel_btn.layer().setCornerRadius_(8)
+        cancel_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
+        cancel_btn.setTarget_(self); cancel_btn.setAction_(b"_dismissSettings:")
+        acc.addSubview_(cancel_btn)
+
+        save_btn = NSButton.alloc().initWithFrame_(NSMakeRect(btn_w + 8, y, btn_w, 30))
+        save_btn.setTitle_("Save")
+        save_btn.setBordered_(False)
+        save_btn.setWantsLayer_(True)
+        save_btn.layer().setBackgroundColor_(NSColor.controlAccentColor().CGColor())
+        save_btn.layer().setCornerRadius_(8)
+        save_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
+        save_btn.setContentTintColor_(NSColor.whiteColor())
+        save_btn.setTarget_(self); save_btn.setAction_(b"_saveSettings:")
+        acc.addSubview_(save_btn)
+        y += 32
+
+        acc.setFrameSize_(NSMakeSize(SW, y))
+
+        # Build frosted glass settings panel
+        panel_w = SW + PAD_S * 2
+        panel_h = y + PAD_S * 2
+        sp = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(0, 0, panel_w, panel_h),
+            NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel,
+            NSBackingStoreBuffered, False)
+        sp.setLevel_(NSFloatingWindowLevel)
+        sp.setHasShadow_(True)
+        sp.setOpaque_(False)
+        sp.setBackgroundColor_(NSColor.clearColor())
+
+        # Frosted glass content view
+        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, panel_w, panel_h))
+        glass.setMaterial_(3)   # HUDWindow
+        glass.setState_(1)
+        glass.setBlendingMode_(0)
+        glass.setWantsLayer_(True)
+        glass.layer().setCornerRadius_(12)
+        glass.layer().setMasksToBounds_(True)
+        sp.setContentView_(glass)
+
+        # Position content inside the glass view (top-aligned)
+        acc.setFrameOrigin_(NSMakePoint(PAD_S, panel_h - y - PAD_S))
+        glass.addSubview_(acc)
+
+        # Center on screen
+        screen = NSScreen.mainScreen().frame()
+        sp.setFrameOrigin_(NSMakePoint(
+            (screen.size.width - panel_w) / 2,
+            (screen.size.height - panel_h) / 2 + 50))
+
+        self._settings_panel = sp
+        self._settings_controls = {
+            "model_popup": model_popup,
+            "lang_popup": lang_popup,
+            "tone_popup": tone_popup,
+            "ux_popup": ux_popup,
+        }
+
+        sp.makeKeyAndOrderFront_(None)
+        NSApp.runModalForWindow_(sp)
+
+    @objc.typedSelector(b"v@:@")
+    def _dismissSettings_(self, sender):
+        NSApp.stopModal()
+        self._settings_panel.orderOut_(None)
+
+    @objc.typedSelector(b"v@:@")
+    def _saveSettings_(self, sender):
+        NSApp.stopModal()
+        self._settings_panel.orderOut_(None)
+
+        ctrls = self._settings_controls
+        model_popup = ctrls["model_popup"]
+        lang_popup = ctrls["lang_popup"]
+        tone_popup = ctrls["tone_popup"]
+        ux_popup = ctrls["ux_popup"]
+
+        if True:  # save block (replaces alert.runModal check)
             rmap = {0: "sonnet", 1: "opus", 2: "haiku"}
             new_model = rmap.get(model_popup.indexOfSelectedItem(), "sonnet")
             lrmap = {0: "en", 1: "cn"}
@@ -1525,10 +1615,11 @@ class FigWatch(NSObject):
 
     @objc.typedSelector(b"v@:@")
     def doAddTrigger_(self, sender):
-        win = sender.window()
-        if win:
-            NSApp.abortModal()
-            win.orderOut_(None)
+        try:
+            NSApp.stopModal()
+            self._settings_panel.orderOut_(None)
+        except Exception:
+            pass
 
         # Discover available skills for the dropdown
         from handlers.generic import _find_skills
@@ -1625,10 +1716,11 @@ class FigWatch(NSObject):
             self._save_trigger_config(tc)
             for w in self._state.get("watchers", {}).values():
                 w.reload_trigger_config(tc)
-            win = sender.window()
-            if win:
-                NSApp.abortModal()
-                win.orderOut_(None)
+            try:
+                NSApp.stopModal()
+                self._settings_panel.orderOut_(None)
+            except Exception:
+                pass
 
     def _save_trigger_config(self, trigger_config):
         """Write triggers key to config."""
@@ -1640,10 +1732,11 @@ class FigWatch(NSObject):
 
     @objc.typedSelector(b"v@:@")
     def doCheckUpdate_(self, sender):
-        win = sender.window()
-        if win:
-            NSApp.abortModal()
-            win.orderOut_(None)
+        try:
+            NSApp.stopModal()
+            self._settings_panel.orderOut_(None)
+        except Exception:
+            pass
         threading.Thread(target=self._run_update_check, daemon=True).start()
 
     def _run_update_check(self):
