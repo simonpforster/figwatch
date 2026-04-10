@@ -752,17 +752,15 @@ class FigWatch(NSObject):
         self._panel.setHasShadow_(True)
         self._panel.setOpaque_(False)
         self._panel.setBackgroundColor_(NSColor.clearColor())
-        # Frosted glass background via NSVisualEffectView
-        content = self._panel.contentView()
-        content.setWantsLayer_(True)
-        content.layer().setCornerRadius_(12)
-        content.layer().setMasksToBounds_(True)
-        glass = NSVisualEffectView.alloc().initWithFrame_(content.bounds())
-        glass.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
-        glass.setMaterial_(6)  # NSVisualEffectMaterialMenu
-        glass.setState_(1)    # NSVisualEffectStateActive (always vibrant)
+        # Replace content view with NSVisualEffectView for frosted glass
+        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, W, 400))
+        glass.setMaterial_(6)   # NSVisualEffectMaterialMenu
+        glass.setState_(1)     # NSVisualEffectStateActive
         glass.setBlendingMode_(0)  # behindWindow
-        content.addSubview_positioned_relativeTo_(glass, -1, None)  # NSWindowBelow
+        glass.setWantsLayer_(True)
+        glass.layer().setCornerRadius_(12)
+        glass.layer().setMasksToBounds_(True)
+        self._panel.setContentView_(glass)
 
         # Register as login item (macOS 13+ / Ventura)
         self._register_login_item()
@@ -1077,12 +1075,11 @@ class FigWatch(NSObject):
                 return
             self._state["popover_open"] = True
             self._rebuild_popover()
-            # Position below the status item button
-            btn_frame = sender.window().frame()
-            btn_origin = sender.window().convertRectToScreen_(sender.frame())
+            # Position below the status item, right-aligned to the button
+            btn_screen = sender.window().convertRectToScreen_(sender.frame())
             panel_size = self._panel.frame().size
-            x = btn_origin.origin.x + btn_origin.size.width / 2 - panel_size.width / 2
-            y = btn_origin.origin.y - panel_size.height - 4
+            x = btn_screen.origin.x + btn_screen.size.width - panel_size.width
+            y = btn_screen.origin.y - panel_size.height - 4
             self._panel.setFrameOrigin_(NSMakePoint(x, y))
             self._panel.orderFrontRegardless()
             self._remove_event_monitor()
