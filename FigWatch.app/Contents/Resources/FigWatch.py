@@ -1335,11 +1335,11 @@ class FigWatch(NSObject):
         def _section(title, icon_name):
             nonlocal y
             if y > 0:
-                y += 8
+                y += 6
                 sep = NSBox.alloc().initWithFrame_(NSMakeRect(0, y, SW, 1))
                 sep.setBoxType_(2)
                 acc.addSubview_(sep)
-                y += 14
+                y += 10
             h = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 18))
             icon = _sf_symbol(icon_name, size=12, color=NSColor.secondaryLabelColor())
             if icon:
@@ -1349,18 +1349,18 @@ class FigWatch(NSObject):
             lbl.setFrameOrigin_((20, 0))
             h.addSubview_(lbl)
             acc.addSubview_(h)
-            y += 26
+            y += 22
 
         def _row_inline(label_text, control):
             """Label on the left, control on the right, same line."""
             nonlocal y
             lbl = _label(label_text, size=12)
-            lbl.setFrameOrigin_((0, y + 4))
+            lbl.setFrameOrigin_((0, y + 3))
             acc.addSubview_(lbl)
             cf = control.frame()
             control.setFrameOrigin_((SW - cf.size.width, y))
             acc.addSubview_(control)
-            y += 32
+            y += 28
 
         # ── Triggers ──────────────────────────────────────────
         _section("Triggers", "bolt.fill")
@@ -1405,12 +1405,12 @@ class FigWatch(NSObject):
                 row.addSubview_(rm)
 
             acc.addSubview_(row)
-            y += 30
+            y += 26
 
         add_btn = _pill_button("Add Trigger\u2026", b"doAddTrigger:")
         add_btn.setFrameOrigin_((0, y))
         acc.addSubview_(add_btn)
-        y += 34
+        y += 30
 
         # ── Connection ────────────────────────────────────────
         _section("Connection", "link")
@@ -1423,20 +1423,20 @@ class FigWatch(NSObject):
             conn_icon = _sf_symbol("xmark.circle", size=12, color=NSColor.secondaryLabelColor())
             conn_text = "Not connected"
 
-        conn_row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 18))
+        conn_row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 16))
         if conn_icon:
-            conn_icon.setFrameOrigin_((0, 1))
+            conn_icon.setFrameOrigin_((0, 0))
             conn_row.addSubview_(conn_icon)
         conn_lbl = _label(conn_text, size=12)
-        conn_lbl.setFrameOrigin_((20, 0))
+        conn_lbl.setFrameOrigin_((20, -1))
         conn_row.addSubview_(conn_lbl)
         acc.addSubview_(conn_row)
-        y += 24
+        y += 22
 
         tok_btn = _pill_button("Change Token\u2026", b"doToken:")
         tok_btn.setFrameOrigin_((0, y))
         acc.addSubview_(tok_btn)
-        y += 34
+        y += 30
 
         # Hidden token field for save logic
         tok_input = NSTextField.alloc().initWithFrame_(NSMakeRect(0, -100, 0, 0))
@@ -1478,12 +1478,12 @@ class FigWatch(NSObject):
         ver = _label(f"FigWatch v{VERSION}", size=12, color=NSColor.secondaryLabelColor())
         ver.setFrameOrigin_((0, y))
         acc.addSubview_(ver)
-        y += 24
+        y += 20
 
         upd_btn = _pill_button("Check for Updates\u2026", b"doCheckUpdate:")
         upd_btn.setFrameOrigin_((0, y))
         acc.addSubview_(upd_btn)
-        y += 34
+        y += 30
 
         acc.setFrameSize_(NSMakeSize(SW, y))
         alert.setAccessoryView_(acc)
