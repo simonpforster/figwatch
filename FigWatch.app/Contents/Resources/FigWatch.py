@@ -1316,8 +1316,7 @@ class FigWatch(NSObject):
         self._close_popover()
         NSApp.activateIgnoringOtherApps_(True)
 
-        SW = 300
-        PAD_S = 20
+        SW = 420
         acc = FlippedView.alloc().initWithFrame_(NSMakeRect(0, 0, SW, 800))
         y = 0
         config = _load_config()
@@ -1372,12 +1371,6 @@ class FigWatch(NSObject):
             control.setFrameOrigin_((SW - cf.size.width, y))
             acc.addSubview_(control)
             y += 30
-
-        # ── Title ─────────────────────────────────────────────
-        stitle = _label("FigWatch Settings", size=15, weight=NSFontWeightBold)
-        stitle.setFrameOrigin_((0, y))
-        acc.addSubview_(stitle)
-        y += 28
 
         # ── Triggers ──────────────────────────────────────────
         add_trig = _pill("Add Trigger\u2026", b"doAddTrigger:", width=110, height=22)
