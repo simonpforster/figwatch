@@ -1497,88 +1497,18 @@ class FigWatch(NSObject):
         acc.addSubview_(ver)
         y += 20
 
-        # ── Save / Cancel ─────────────────────────────────────
-        _sep()
-
-        btn_w = (SW - 10) // 2
-        btn_h = 32
-        btn_r = btn_h // 2
-
-        cancel_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, y, btn_w, btn_h))
-        cancel_btn.setButtonType_(0)  # momentaryPushIn
-        cancel_btn.setBezelStyle_(NSBezelStyleRounded)
-        cancel_btn.setTitle_("Cancel")
-        cancel_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
-        cancel_btn.setTarget_(self); cancel_btn.setAction_(b"_dismissSettings:")
-        acc.addSubview_(cancel_btn)
-
-        save_btn = NSButton.alloc().initWithFrame_(NSMakeRect(btn_w + 10, y, btn_w, btn_h))
-        save_btn.setButtonType_(0)  # momentaryPushIn
-        save_btn.setBezelStyle_(NSBezelStyleRounded)
-        save_btn.setTitle_("Save")
-        save_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
-        save_btn.setKeyEquivalent_("\r")
-        save_btn.setTarget_(self); save_btn.setAction_(b"_saveSettings:")
-        acc.addSubview_(save_btn)
-        y += btn_h + 2
-
         acc.setFrameSize_(NSMakeSize(SW, y))
 
-        # Build frosted glass settings panel
-        panel_w = SW + PAD_S * 2
-        panel_h = y + PAD_S * 2
-        sp = KeyPanel.alloc().initWithContentRect_styleMask_backing_defer_(
-            NSMakeRect(0, 0, panel_w, panel_h),
-            NSWindowStyleMaskBorderless,
-            NSBackingStoreBuffered, False)
-        sp.setLevel_(NSFloatingWindowLevel)
-        sp.setHasShadow_(True)
-        sp.setOpaque_(False)
-        sp.setBackgroundColor_(NSColor.clearColor())
+        # Use NSAlert for reliable button handling
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("FigWatch Settings")
+        alert.setInformativeText_("")
+        alert.setIcon_(NSImage.alloc().initWithSize_(NSMakeSize(1, 1)))
+        alert.addButtonWithTitle_("Save")
+        alert.addButtonWithTitle_("Cancel")
+        alert.setAccessoryView_(acc)
 
-        # Frosted glass as content view
-        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, panel_w, panel_h))
-        glass.setMaterial_(3)   # HUDWindow
-        glass.setState_(1)
-        glass.setBlendingMode_(0)
-        glass.setWantsLayer_(True)
-        glass.layer().setCornerRadius_(12)
-        glass.layer().setMasksToBounds_(True)
-        sp.setContentView_(glass)
-
-        # Position content (top-aligned in non-flipped glass view)
-        acc.setFrameOrigin_(NSMakePoint(PAD_S, panel_h - y - PAD_S))
-        glass.addSubview_(acc)
-
-        # Center on screen
-        sp.center()
-
-        self._settings_panel = sp
-        self._settings_controls = {
-            "model_popup": model_popup,
-            "lang_popup": lang_popup,
-            "tone_popup": tone_popup,
-            "ux_popup": ux_popup,
-        }
-
-        NSApp.activateIgnoringOtherApps_(True)
-        sp.makeKeyAndOrderFront_(None)
-
-    @objc.typedSelector(b"v@:@")
-    def _dismissSettings_(self, sender):
-        self._settings_panel.orderOut_(None)
-
-    @objc.typedSelector(b"v@:@")
-    def _saveSettings_(self, sender):
-        self._settings_panel.orderOut_(None)
-
-        ctrls = self._settings_controls
-        model_popup = ctrls["model_popup"]
-        lang_popup = ctrls["lang_popup"]
-        tone_popup = ctrls["tone_popup"]
-        ux_popup = ctrls["ux_popup"]
-
-        if True:  # save block (replaces alert.runModal check)
+        if alert.runModal() == NSAlertFirstButtonReturn:
             rmap = {0: "sonnet", 1: "opus", 2: "haiku"}
             new_model = rmap.get(model_popup.indexOfSelectedItem(), "sonnet")
             lrmap = {0: "en", 1: "cn"}
@@ -1616,7 +1546,8 @@ class FigWatch(NSObject):
     @objc.typedSelector(b"v@:@")
     def doAddTrigger_(self, sender):
         try:
-            self._settings_panel.orderOut_(None)
+            NSApp.abortModal()
+            NSApp.keyWindow().orderOut_(None)
         except Exception:
             pass
 
@@ -1732,7 +1663,8 @@ class FigWatch(NSObject):
     @objc.typedSelector(b"v@:@")
     def doCheckUpdate_(self, sender):
         try:
-            self._settings_panel.orderOut_(None)
+            NSApp.abortModal()
+            NSApp.keyWindow().orderOut_(None)
         except Exception:
             pass
         threading.Thread(target=self._run_update_check, daemon=True).start()
