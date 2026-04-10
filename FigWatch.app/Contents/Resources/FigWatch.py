@@ -754,7 +754,7 @@ class FigWatch(NSObject):
         self._panel.setBackgroundColor_(NSColor.clearColor())
         # Replace content view with NSVisualEffectView for frosted glass
         glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, W, 400))
-        glass.setMaterial_(6)   # NSVisualEffectMaterialMenu
+        glass.setMaterial_(3)   # NSVisualEffectMaterialHUDWindow
         glass.setState_(1)     # NSVisualEffectStateActive
         glass.setBlendingMode_(0)  # behindWindow
         glass.setWantsLayer_(True)
