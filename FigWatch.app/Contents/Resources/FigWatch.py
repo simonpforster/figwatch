@@ -684,10 +684,13 @@ def build_popover_view(app):
     else:
         countdown_text = ""
 
+    # Always create the countdown label (so it can be updated in-place)
+    ct = _label(countdown_text or " ", size=9, color=NSColor.tertiaryLabelColor())
+    ct.setFrameOrigin_((PAD + 4, y))
+    ct.setFrameSize_(NSMakeSize(cw, 12))
+    root.addSubview_(ct)
+    app._state["_countdown_label"] = ct
     if countdown_text:
-        ct = _label(countdown_text, size=9, color=NSColor.tertiaryLabelColor())
-        ct.setFrameOrigin_((PAD + 4, y))
-        root.addSubview_(ct)
         y += 14
 
     # Locale popup
@@ -1104,18 +1107,52 @@ class FigWatch(NSObject):
                 except Exception:
                     pass
 
+    def _data_snapshot(self):
+        """Hashable snapshot of data that requires a full view rebuild."""
+        statuses = tuple(
+            (k, s.get("status"), s.get("trigger"), s.get("user"))
+            for k, s in sorted(self._state.get("file_statuses", {}).items())
+        )
+        watched_keys = tuple(f["key"] for f in self._state.get("watched", []))
+        return (watched_keys, statuses)
+
+    def _update_countdown_label(self):
+        """Update just the countdown label text without rebuilding the view."""
+        label = self._state.get("_countdown_label")
+        if not label:
+            return
+        file_statuses = self._state.get("file_statuses", {})
+        last_polls = [s.get("last_poll") for s in file_statuses.values() if s.get("last_poll")]
+        if last_polls:
+            remaining = max(0, int(30 - (time.time() - max(last_polls))))
+            text = f"Checking for comments in {remaining}s" if remaining > 0 else "Checking now\u2026"
+        elif self._state.get("watched"):
+            text = "Starting\u2026"
+        else:
+            text = ""
+        try:
+            label.setStringValue_(text)
+        except Exception:
+            pass
+
     def _start_refresh_timer(self):
-        """Start a background thread that rebuilds the popover every second.
-        Calls _rebuild_popover from the background thread — safe enough for
-        a menu bar utility under CPython's GIL."""
+        """Background thread that ticks every second while popover is open.
+        Updates only the countdown label; does a full rebuild only when data changes."""
+        self._state["_last_data_snap"] = self._data_snapshot()
         def _loop():
             while self._state.get("popover_open"):
                 time.sleep(1)
-                if self._state.get("popover_open"):
-                    try:
+                if not self._state.get("popover_open"):
+                    break
+                try:
+                    snap = self._data_snapshot()
+                    if snap != self._state.get("_last_data_snap"):
+                        self._state["_last_data_snap"] = snap
                         self._rebuild_popover()
-                    except Exception:
-                        pass
+                    else:
+                        self._update_countdown_label()
+                except Exception:
+                    pass
         threading.Thread(target=_loop, daemon=True).start()
 
     def _stop_refresh_timer(self):
