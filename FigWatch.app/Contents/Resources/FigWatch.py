@@ -260,6 +260,14 @@ def check_deps():
     return deps
 
 
+# ── Key Panel (borderless but accepts key/mouse) ──────────────────
+
+class KeyPanel(NSPanel):
+    """Borderless panel that can become key window (for button clicks)."""
+    def canBecomeKeyWindow(self):
+        return True
+
+
 # ── Flipped View (Y=0 at top) ──────────────────────────────────────
 
 class FlippedView(NSView):
@@ -1338,24 +1346,22 @@ class FigWatch(NSObject):
             nonlocal y
             if y > 0:
                 _sep()
-            h = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 20))
-            lbl = _label(title, size=12, weight=NSFontWeightSemibold)
-            lbl.sizeToFit()
-            lbl_h = lbl.frame().size.height
-            lbl.setFrameOrigin_((20, (20 - lbl_h) / 2))
-            h.addSubview_(lbl)
+            sh = 24
+            h = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, sh))
             icon = _sf_symbol(icon_name, size=12, color=NSColor.secondaryLabelColor())
             if icon:
-                icon_h = icon.frame().size.height
-                icon.setFrameOrigin_((0, (20 - icon_h) / 2))
+                icon.setFrameOrigin_((0, (sh - icon.frame().size.height) / 2))
                 h.addSubview_(icon)
+            lbl = _label(title, size=12, weight=NSFontWeightSemibold)
+            lbl.sizeToFit()
+            lbl.setFrameOrigin_((20, (sh - lbl.frame().size.height) / 2))
             h.addSubview_(lbl)
             if trailing_btn:
                 tf = trailing_btn.frame()
-                trailing_btn.setFrameOrigin_((SW - tf.size.width, 0))
+                trailing_btn.setFrameOrigin_((SW - tf.size.width, (sh - tf.size.height) / 2))
                 h.addSubview_(trailing_btn)
             acc.addSubview_(h)
-            y += 26
+            y += sh + 4
 
         def _row(label_text, control):
             nonlocal y
@@ -1500,16 +1506,23 @@ class FigWatch(NSObject):
 
         cancel_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, y, btn_w, btn_h))
         cancel_btn.setTitle_("Cancel")
-        cancel_btn.setBezelStyle_(NSBezelStyleRecessed)
+        cancel_btn.setBordered_(False)
+        cancel_btn.setWantsLayer_(True)
+        cancel_btn.layer().setBackgroundColor_(
+            NSColor.labelColor().colorWithAlphaComponent_(0.06).CGColor())
+        cancel_btn.layer().setCornerRadius_(btn_r)
         cancel_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
         cancel_btn.setTarget_(self); cancel_btn.setAction_(b"_dismissSettings:")
         acc.addSubview_(cancel_btn)
 
         save_btn = NSButton.alloc().initWithFrame_(NSMakeRect(btn_w + 10, y, btn_w, btn_h))
         save_btn.setTitle_("Save")
-        save_btn.setBezelStyle_(NSBezelStyleRecessed)
+        save_btn.setBordered_(False)
+        save_btn.setWantsLayer_(True)
+        save_btn.layer().setBackgroundColor_(NSColor.controlAccentColor().CGColor())
+        save_btn.layer().setCornerRadius_(btn_r)
         save_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
-        save_btn.setKeyEquivalent_("\r")  # Enter key
+        save_btn.setContentTintColor_(NSColor.whiteColor())
         save_btn.setTarget_(self); save_btn.setAction_(b"_saveSettings:")
         acc.addSubview_(save_btn)
         y += btn_h + 2
@@ -1519,37 +1532,28 @@ class FigWatch(NSObject):
         # Build frosted glass settings panel
         panel_w = SW + PAD_S * 2
         panel_h = y + PAD_S * 2
-        # Use titled+closable style so it accepts key/mouse events,
-        # then hide the title bar visually with titlebarAppearsTransparent
-        sp = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+        sp = KeyPanel.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, panel_w, panel_h),
-            NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskFullSizeContentView,
+            NSWindowStyleMaskBorderless,
             NSBackingStoreBuffered, False)
-        sp.setTitle_("")
-        sp.setTitlebarAppearsTransparent_(True)
-        sp.setTitleVisibility_(1)  # NSWindowTitleHidden
         sp.setLevel_(NSFloatingWindowLevel)
         sp.setHasShadow_(True)
         sp.setOpaque_(False)
         sp.setBackgroundColor_(NSColor.clearColor())
-        # Hide traffic light buttons
-        sp.standardWindowButton_(0).setHidden_(True)  # close
-        sp.standardWindowButton_(1).setHidden_(True)  # minimize
-        sp.standardWindowButton_(2).setHidden_(True)  # zoom
 
-        # Frosted glass content view
-        glass = NSVisualEffectView.alloc().initWithFrame_(sp.contentView().bounds())
-        glass.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
+        # Frosted glass as content view
+        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, panel_w, panel_h))
         glass.setMaterial_(3)   # HUDWindow
         glass.setState_(1)
         glass.setBlendingMode_(0)
-        sp.contentView().addSubview_positioned_relativeTo_(glass, -1, None)
+        glass.setWantsLayer_(True)
+        glass.layer().setCornerRadius_(12)
+        glass.layer().setMasksToBounds_(True)
+        sp.setContentView_(glass)
 
-        # Position content
-        cv = sp.contentView()
-        cv_h = cv.frame().size.height
-        acc.setFrameOrigin_(NSMakePoint(PAD_S, cv_h - y - PAD_S))
-        cv.addSubview_(acc)
+        # Position content (top-aligned in non-flipped glass view)
+        acc.setFrameOrigin_(NSMakePoint(PAD_S, panel_h - y - PAD_S))
+        glass.addSubview_(acc)
 
         # Center on screen
         sp.center()
@@ -1564,13 +1568,16 @@ class FigWatch(NSObject):
 
         NSApp.activateIgnoringOtherApps_(True)
         sp.makeKeyAndOrderFront_(None)
+        NSApp.runModalForWindow_(sp)
 
     @objc.typedSelector(b"v@:@")
     def _dismissSettings_(self, sender):
+        NSApp.stopModal()
         self._settings_panel.orderOut_(None)
 
     @objc.typedSelector(b"v@:@")
     def _saveSettings_(self, sender):
+        NSApp.stopModal()
         self._settings_panel.orderOut_(None)
 
         ctrls = self._settings_controls
@@ -1617,6 +1624,7 @@ class FigWatch(NSObject):
     @objc.typedSelector(b"v@:@")
     def doAddTrigger_(self, sender):
         try:
+            NSApp.stopModal()
             self._settings_panel.orderOut_(None)
         except Exception:
             pass
@@ -1733,6 +1741,7 @@ class FigWatch(NSObject):
     @objc.typedSelector(b"v@:@")
     def doCheckUpdate_(self, sender):
         try:
+            NSApp.stopModal()
             self._settings_panel.orderOut_(None)
         except Exception:
             pass
