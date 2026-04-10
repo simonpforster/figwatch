@@ -1517,35 +1517,36 @@ class FigWatch(NSObject):
         # Build frosted glass settings panel
         panel_w = SW + PAD_S * 2
         panel_h = y + PAD_S * 2
+        # Use titled+closable style so it accepts key/mouse events,
+        # then hide the title bar visually with titlebarAppearsTransparent
         sp = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, panel_w, panel_h),
-            NSWindowStyleMaskBorderless,
+            NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskFullSizeContentView,
             NSBackingStoreBuffered, False)
+        sp.setTitle_("")
+        sp.setTitlebarAppearsTransparent_(True)
+        sp.setTitleVisibility_(1)  # NSWindowTitleHidden
         sp.setLevel_(NSFloatingWindowLevel)
-        sp.setBecomesKeyOnlyIfNeeded_(False)
         sp.setHasShadow_(True)
         sp.setOpaque_(False)
         sp.setBackgroundColor_(NSColor.clearColor())
 
         # Frosted glass content view
-        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, panel_w, panel_h))
+        glass = NSVisualEffectView.alloc().initWithFrame_(sp.contentView().bounds())
+        glass.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
         glass.setMaterial_(3)   # HUDWindow
         glass.setState_(1)
         glass.setBlendingMode_(0)
-        glass.setWantsLayer_(True)
-        glass.layer().setCornerRadius_(12)
-        glass.layer().setMasksToBounds_(True)
-        sp.setContentView_(glass)
+        sp.contentView().addSubview_positioned_relativeTo_(glass, -1, None)
 
-        # Position content inside the glass view (top-aligned)
-        acc.setFrameOrigin_(NSMakePoint(PAD_S, panel_h - y - PAD_S))
-        glass.addSubview_(acc)
+        # Position content
+        cv = sp.contentView()
+        cv_h = cv.frame().size.height
+        acc.setFrameOrigin_(NSMakePoint(PAD_S, cv_h - y - PAD_S))
+        cv.addSubview_(acc)
 
         # Center on screen
-        screen = NSScreen.mainScreen().frame()
-        sp.setFrameOrigin_(NSMakePoint(
-            (screen.size.width - panel_w) / 2,
-            (screen.size.height - panel_h) / 2 + 50))
+        sp.center()
 
         self._settings_panel = sp
         self._settings_controls = {
