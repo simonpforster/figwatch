@@ -1505,24 +1505,19 @@ class FigWatch(NSObject):
         btn_r = btn_h // 2
 
         cancel_btn = NSButton.alloc().initWithFrame_(NSMakeRect(0, y, btn_w, btn_h))
+        cancel_btn.setButtonType_(0)  # momentaryPushIn
+        cancel_btn.setBezelStyle_(NSBezelStyleRounded)
         cancel_btn.setTitle_("Cancel")
-        cancel_btn.setBordered_(False)
-        cancel_btn.setWantsLayer_(True)
-        cancel_btn.layer().setBackgroundColor_(
-            NSColor.labelColor().colorWithAlphaComponent_(0.06).CGColor())
-        cancel_btn.layer().setCornerRadius_(btn_r)
         cancel_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
         cancel_btn.setTarget_(self); cancel_btn.setAction_(b"_dismissSettings:")
         acc.addSubview_(cancel_btn)
 
         save_btn = NSButton.alloc().initWithFrame_(NSMakeRect(btn_w + 10, y, btn_w, btn_h))
+        save_btn.setButtonType_(0)  # momentaryPushIn
+        save_btn.setBezelStyle_(NSBezelStyleRounded)
         save_btn.setTitle_("Save")
-        save_btn.setBordered_(False)
-        save_btn.setWantsLayer_(True)
-        save_btn.layer().setBackgroundColor_(NSColor.controlAccentColor().CGColor())
-        save_btn.layer().setCornerRadius_(btn_r)
         save_btn.setFont_(NSFont.systemFontOfSize_weight_(13, NSFontWeightMedium))
-        save_btn.setContentTintColor_(NSColor.whiteColor())
+        save_btn.setKeyEquivalent_("\r")
         save_btn.setTarget_(self); save_btn.setAction_(b"_saveSettings:")
         acc.addSubview_(save_btn)
         y += btn_h + 2
