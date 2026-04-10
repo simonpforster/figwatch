@@ -1568,16 +1568,13 @@ class FigWatch(NSObject):
 
         NSApp.activateIgnoringOtherApps_(True)
         sp.makeKeyAndOrderFront_(None)
-        NSApp.runModalForWindow_(sp)
 
     @objc.typedSelector(b"v@:@")
     def _dismissSettings_(self, sender):
-        NSApp.stopModal()
         self._settings_panel.orderOut_(None)
 
     @objc.typedSelector(b"v@:@")
     def _saveSettings_(self, sender):
-        NSApp.stopModal()
         self._settings_panel.orderOut_(None)
 
         ctrls = self._settings_controls
@@ -1624,7 +1621,6 @@ class FigWatch(NSObject):
     @objc.typedSelector(b"v@:@")
     def doAddTrigger_(self, sender):
         try:
-            NSApp.stopModal()
             self._settings_panel.orderOut_(None)
         except Exception:
             pass
@@ -1741,7 +1737,6 @@ class FigWatch(NSObject):
     @objc.typedSelector(b"v@:@")
     def doCheckUpdate_(self, sender):
         try:
-            NSApp.stopModal()
             self._settings_panel.orderOut_(None)
         except Exception:
             pass
