@@ -1334,20 +1334,24 @@ class FigWatch(NSObject):
             acc.addSubview_(s)
             y += 14
 
-        def _section(title, icon_name):
+        def _section(title, icon_name, trailing_btn=None):
             nonlocal y
             if y > 0:
                 _sep()
-            h = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 18))
+            h = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 22))
             icon = _sf_symbol(icon_name, size=12, color=NSColor.secondaryLabelColor())
             if icon:
-                icon.setFrameOrigin_((0, 1))
+                icon.setFrameOrigin_((0, 3))
                 h.addSubview_(icon)
             lbl = _label(title, size=12, weight=NSFontWeightSemibold)
-            lbl.setFrameOrigin_((20, 0))
+            lbl.setFrameOrigin_((20, 2))
             h.addSubview_(lbl)
+            if trailing_btn:
+                tf = trailing_btn.frame()
+                trailing_btn.setFrameOrigin_((SW - tf.size.width, 0))
+                h.addSubview_(trailing_btn)
             acc.addSubview_(h)
-            y += 24
+            y += 26
 
         def _row(label_text, control):
             nonlocal y
@@ -1366,7 +1370,9 @@ class FigWatch(NSObject):
         y += 28
 
         # ── Triggers ──────────────────────────────────────────
-        _section("Triggers", "bolt.fill")
+        add_trig = _pill("Add Trigger\u2026", b"doAddTrigger:", width=110, height=22)
+        add_trig.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
+        _section("Triggers", "bolt.fill", trailing_btn=add_trig)
 
         trigger_config = self._state.get("trigger_config", [])
         intro_results = self._state.get("introspection_results", {})
@@ -1409,13 +1415,10 @@ class FigWatch(NSObject):
             acc.addSubview_(row)
             y += 28
 
-        add_btn = _pill("Add Trigger\u2026", b"doAddTrigger:")
-        add_btn.setFrameOrigin_((0, y))
-        acc.addSubview_(add_btn)
-        y += 32
-
         # ── Connection ────────────────────────────────────────
-        _section("Connection", "link")
+        tok_hdr_btn = _pill("Change Token\u2026", b"doToken:", width=120, height=22)
+        tok_hdr_btn.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
+        _section("Connection", "link", trailing_btn=tok_hdr_btn)
 
         user = self._state.get("user")
         if user and self._state.get("pat"):
@@ -1433,12 +1436,7 @@ class FigWatch(NSObject):
         conn_lbl.setFrameOrigin_((20, 0))
         conn_row.addSubview_(conn_lbl)
         acc.addSubview_(conn_row)
-        y += 24
-
-        tok_btn = _pill("Change Token\u2026", b"doToken:")
-        tok_btn.setFrameOrigin_((0, y))
-        acc.addSubview_(tok_btn)
-        y += 32
+        y += 22
 
         # Hidden token field
         tok_input = NSTextField.alloc().initWithFrame_(NSMakeRect(0, -100, 0, 0))
@@ -1475,19 +1473,14 @@ class FigWatch(NSObject):
         _row("UX workers", ux_popup)
 
         # ── About ─────────────────────────────────────────────
-        _section("About", "info.circle")
+        upd_hdr_btn = _pill("Check for Updates", b"doCheckUpdate:", width=140, height=22)
+        upd_hdr_btn.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
+        _section("About", "info.circle", trailing_btn=upd_hdr_btn)
 
-        about_row = NSView.alloc().initWithFrame_(NSMakeRect(0, y, SW, 22))
-        ver = _label(f"v{VERSION}", size=12, color=NSColor.secondaryLabelColor())
-        ver.setFrameOrigin_((0, 3))
-        about_row.addSubview_(ver)
-
-        upd_btn = _pill("Check for Updates", b"doCheckUpdate:", width=140, height=22)
-        upd_btn.setFont_(NSFont.systemFontOfSize_weight_(11, NSFontWeightMedium))
-        upd_btn.setFrameOrigin_((SW - 140, 0))
-        about_row.addSubview_(upd_btn)
-        acc.addSubview_(about_row)
-        y += 28
+        ver = _label(f"FigWatch v{VERSION}", size=12, color=NSColor.secondaryLabelColor())
+        ver.setFrameOrigin_((0, y))
+        acc.addSubview_(ver)
+        y += 20
 
         # ── Save / Cancel ─────────────────────────────────────
         _sep()
@@ -1526,9 +1519,10 @@ class FigWatch(NSObject):
         panel_h = y + PAD_S * 2
         sp = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, panel_w, panel_h),
-            NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel,
+            NSWindowStyleMaskBorderless,
             NSBackingStoreBuffered, False)
         sp.setLevel_(NSFloatingWindowLevel)
+        sp.setBecomesKeyOnlyIfNeeded_(False)
         sp.setHasShadow_(True)
         sp.setOpaque_(False)
         sp.setBackgroundColor_(NSColor.clearColor())
