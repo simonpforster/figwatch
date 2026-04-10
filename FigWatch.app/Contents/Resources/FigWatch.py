@@ -652,11 +652,11 @@ def build_popover_view(app):
         y += visible_h
 
     # ── Footer ─────────────────────────────────────────────────
-    y += 6
+    y += 8
     sep = NSBox.alloc().initWithFrame_(NSMakeRect(PAD, y, cw, 1))
     sep.setBoxType_(2)
     root.addSubview_(sep)
-    y += 8
+    y += 10
 
     # Poll countdown
     poll_interval = 30
@@ -689,7 +689,7 @@ def build_popover_view(app):
     footer.addSubview_(gear)
 
     root.addSubview_(footer)
-    y += footer_h + PAD - 2
+    y += footer_h + PAD
 
     root.setFrameSize_(NSMakeSize(W, y))
     return root, y
@@ -699,7 +699,6 @@ def build_popover_view(app):
 
 class FigWatch(NSObject):
     statusItem = objc.ivar()
-    popover = objc.ivar()
     _state = {}
 
     def applicationDidFinishLaunching_(self, notif):
@@ -745,9 +744,23 @@ class FigWatch(NSObject):
         self._set_icon(False)
         btn.setTarget_(self); btn.setAction_(b"toggle:")
 
-        self.popover = NSPopover.alloc().init()
-        self.popover.setBehavior_(1)  # transient
-        self.popover.setAnimates_(True)
+        # Floating panel instead of NSPopover (no arrow, full control)
+        self._panel = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(0, 0, W, 400),
+            NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel,
+            NSBackingStoreBuffered, False)
+        self._panel.setLevel_(NSPopUpMenuWindowLevel)
+        self._panel.setFloatingPanel_(True)
+        self._panel.setHasShadow_(True)
+        self._panel.setOpaque_(False)
+        self._panel.setBackgroundColor_(NSColor.clearColor())
+        # Rounded corners via layer
+        content = self._panel.contentView()
+        content.setWantsLayer_(True)
+        content.layer().setCornerRadius_(10)
+        content.layer().setMasksToBounds_(True)
+        content.layer().setBackgroundColor_(
+            NSColor.windowBackgroundColor().CGColor())
 
         # Register as login item (macOS 13+ / Ventura)
         self._register_login_item()
@@ -1060,9 +1073,16 @@ class FigWatch(NSObject):
             if self._state.get("popover_open"):
                 self._close_popover()
                 return
-            self._state["popover_anchor"] = sender
             self._state["popover_open"] = True
-            self._rebuild_popover(show=True)
+            self._rebuild_popover()
+            # Position below the status item button
+            btn_frame = sender.window().frame()
+            btn_origin = sender.window().convertRectToScreen_(sender.frame())
+            panel_size = self._panel.frame().size
+            x = btn_origin.origin.x + btn_origin.size.width / 2 - panel_size.width / 2
+            y = btn_origin.origin.y - panel_size.height - 4
+            self._panel.setFrameOrigin_(NSMakePoint(x, y))
+            self._panel.orderFrontRegardless()
             self._remove_event_monitor()
             self._state["event_monitor"] = NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(
                 NSLeftMouseDownMask | NSRightMouseDownMask,
@@ -1072,32 +1092,19 @@ class FigWatch(NSObject):
         except Exception:
             pass
 
-    def _rebuild_popover(self, show=False):
-        """Build (and optionally show) the popover with latest data."""
+    def _rebuild_popover(self):
+        """Build and display the panel with latest data."""
         view, h = self._build_current_view()
-        vc = NSViewController.alloc().init()
-        vc.setView_(view)
-        self.popover.setContentViewController_(vc)
-        self.popover.setContentSize_(NSMakeSize(W, h))
-        if show and not self.popover.isShown():
-            sender = self._state.get("popover_anchor")
-            if sender:
-                try:
-                    self.popover.showRelativeToRect_ofView_preferredEdge_(
-                        sender.bounds(), sender, NSMinYEdge)
-                    # Hide the arrow triangle by making it transparent
-                    try:
-                        pop_window = self.popover.contentViewController().view().window()
-                        if pop_window:
-                            frame = pop_window.frame()
-                            # Shift window up by the arrow height and resize
-                            pop_window.setFrame_display_(
-                                NSMakeRect(frame.origin.x, frame.origin.y + 12,
-                                           frame.size.width, frame.size.height - 12), True)
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
+        content = self._panel.contentView()
+        # Remove old subviews
+        for sub in list(content.subviews()):
+            sub.removeFromSuperview()
+        view.setFrame_(NSMakeRect(0, 0, W, h))
+        content.addSubview_(view)
+        # Resize panel, keeping top-left fixed
+        old_frame = self._panel.frame()
+        new_y = old_frame.origin.y + old_frame.size.height - h
+        self._panel.setFrame_display_(NSMakeRect(old_frame.origin.x, new_y, W, h), True)
 
     def _data_snapshot(self):
         """Hashable snapshot of data that requires a full view rebuild."""
@@ -1152,11 +1159,9 @@ class FigWatch(NSObject):
 
     def _close_popover(self):
         self._state["popover_open"] = False
-        self._state["popover_anchor"] = None
         self._stop_refresh_timer()
         try:
-            if self.popover.isShown():
-                self.popover.close()
+            self._panel.orderOut_(None)
         except Exception:
             pass
         self._remove_event_monitor()
