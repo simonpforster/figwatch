@@ -28,7 +28,7 @@ from figwatch.domain import STATUS_LIVE, STATUS_DETECTED, STATUS_PROCESSING, STA
 
 # ── Config ──────────────────────────────────────────────────────────
 
-VERSION = "1.2.0"
+from figwatch import __version__ as VERSION
 RELEASES_API = "https://api.github.com/repos/OJBoon/figwatch/releases/latest"
 RELEASES_URL = "https://github.com/OJBoon/figwatch/releases/latest"
 

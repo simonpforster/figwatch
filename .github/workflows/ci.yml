@@ -42,3 +42,23 @@ jobs:
           sleep 5
           curl -sf http://localhost:8080/health
           docker rm -f figwatch-ci
+
+  macos:
+    name: macOS app build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build dependencies
+        run: make install
+
+      - name: Build app
+        run: make build
+
+      - name: Verify app bundle exists
+        run: test -d macos/dist/FigWatch.app
