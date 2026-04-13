@@ -14,6 +14,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from setuptools import setup
+from figwatch import __version__
 
 APP = ['FigWatch.py']
 OPTIONS = {
@@ -24,8 +25,8 @@ OPTIONS = {
         'CFBundleName': 'FigWatch',
         'CFBundleDisplayName': 'FigWatch',
         'CFBundleIdentifier': 'com.figwatch.app',
-        'CFBundleVersion': '1.2.0',
-        'CFBundleShortVersionString': '1.2.0',
+        'CFBundleVersion': __version__,
+        'CFBundleShortVersionString': __version__,
         'LSUIElement': True,           # Menu bar app — no Dock icon
         'NSHighResolutionCapable': True,
     },
