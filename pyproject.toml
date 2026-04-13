@@ -1,7 +1,7 @@
 [project]
 name = "figwatch"
-version = "1.2.0"
-description = "Figma comment watcher powered by Claude Code"
+version = "1.3.0"
+description = "AI-powered Figma design auditor — drop a trigger comment on any frame, get an instant audit reply"
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
@@ -9,6 +9,10 @@ requires-python = ">=3.9"
 server = [
     "anthropic",
     "google-generativeai",
+]
+# pip install -e ".[dev]"  — installs test dependencies
+dev = [
+    "pytest",
 ]
 
 [build-system]
