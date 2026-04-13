@@ -24,7 +24,7 @@ from Foundation import *
 from PyObjCTools import AppHelper
 
 import figwatch.handlers as handlers
-from figwatch.handlers import STATUS_LIVE, STATUS_DETECTED, STATUS_PROCESSING, STATUS_REPLIED, STATUS_ERROR
+from figwatch.domain import STATUS_LIVE, STATUS_DETECTED, STATUS_PROCESSING, STATUS_REPLIED, STATUS_ERROR
 
 # ── Config ──────────────────────────────────────────────────────────
 
@@ -804,7 +804,7 @@ class FigWatch(NSObject):
         """Background init: validate PAT, load config, start watchers."""
         self._state["user"] = _validate_token(self._state["pat"])
 
-        from figwatch.watcher import load_trigger_config
+        from figwatch.domain import load_trigger_config
         self._state["trigger_config"] = load_trigger_config()
 
         if not os.path.exists(WATCHED_PATH) and os.path.exists(RECENTS_PATH):
@@ -889,7 +889,7 @@ class FigWatch(NSObject):
             self._state["workers"].append(t)
 
     def _worker_loop(self, q):
-        from figwatch.watcher import process_work_item
+        from figwatch.processor import process_work_item
         while True:
             item = q.get()
             if item is None:
@@ -1386,7 +1386,7 @@ class FigWatch(NSObject):
         kw_field.setFont_(NSFont.monospacedSystemFontOfSize_weight_(12, NSFontWeightRegular))
         acc.addSubview_(kw_field)
 
-        from figwatch.handlers.generic import _find_skills
+        from figwatch.skills import find_skills as _find_skills
         available = _find_skills()
         sk_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(88, y, SW - 88, 24), False)
         sk_popup.setFont_(NSFont.systemFontOfSize_(11))
@@ -1566,7 +1566,7 @@ class FigWatch(NSObject):
         except Exception:
             pass
 
-        from figwatch.handlers.generic import _find_skills
+        from figwatch.skills import find_skills as _find_skills
         available = _find_skills()
 
         NSApp.activateIgnoringOtherApps_(True)
@@ -1639,7 +1639,7 @@ class FigWatch(NSObject):
         ).start()
 
     def _introspect_new_trigger(self, skill_path):
-        from figwatch.handlers.generic import introspect_skill
+        from figwatch.skills import introspect_skill
         result = introspect_skill(skill_path, _resolve_claude_path())
         intro = self._state.setdefault("introspection_results", {})
         intro[skill_path] = result

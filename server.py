@@ -45,11 +45,10 @@ _repo_root = os.path.dirname(os.path.abspath(__file__))
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
-from figwatch.handlers import figma_get_retry
-from figwatch.watcher import (
-    WorkItem, load_processed, load_trigger_config,
-    match_trigger, process_work_item, save_processed,
-)
+from figwatch.domain import WorkItem, load_trigger_config, match_trigger
+from figwatch.processor import process_work_item
+from figwatch.providers.figma import figma_get_retry
+from figwatch.watcher import load_processed, save_processed
 
 
 def _parse_file_keys(files_str):
