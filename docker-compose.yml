@@ -11,10 +11,11 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       # Optional (shown with defaults)
-      - FIGWATCH_MODEL=${FIGWATCH_MODEL:-sonnet}
+      - FIGWATCH_MODEL=${FIGWATCH_MODEL:-gemini-flash}
       - FIGWATCH_FILES=${FIGWATCH_FILES:-}
       - FIGWATCH_LOCALE=${FIGWATCH_LOCALE:-uk}
       - FIGWATCH_PORT=${FIGWATCH_PORT:-8080}
+      - FIGWATCH_WORKERS=${FIGWATCH_WORKERS:-4}
     volumes:
       # Optional: mount custom skill files
       - ./custom-skills:/app/custom-skills

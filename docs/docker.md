@@ -141,6 +141,7 @@ Within seconds you should see the audit appear as a reply in the same thread.
 | `FIGWATCH_FILES` | No | — | Comma-separated Figma file URLs or keys. If unset, handles comments from all team files |
 | `FIGWATCH_LOCALE` | No | `uk` | Locale for tone audits: `uk`, `de`, `fr`, `nl`, `benelux` |
 | `FIGWATCH_PORT` | No | `8080` | Port to listen on |
+| `FIGWATCH_WORKERS` | No | `4` | Number of concurrent skill executions |
 
 ## Restricting to specific files
 
