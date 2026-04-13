@@ -2,19 +2,38 @@
 
 FigWatch runs as a headless webhook server — no macOS required. Rather than polling Figma on a timer, it receives events from Figma in real time and processes them immediately.
 
+## What you'll need
+
+Setup involves two roles that are often different people — a **Figma admin** who can generate tokens and register webhooks, and a **server operator** who runs Docker. Collect everything below before starting.
+
+### From your Figma admin
+
+| What | Where to get it | Used for |
+|------|----------------|---------|
+| **Figma Personal Access Token** | Figma → Settings → Security → [Personal access tokens](https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens) | Authenticating API requests |
+| **Figma team ID** | Figma URL when browsing your team: `figma.com/files/team/`**`1234567890`**`/…` | Registering the webhook |
+
+> The Figma account providing the token must be on a **Professional or Organisation plan** — Figma webhooks are not available on Starter (free) accounts.
+
+### AI provider key — choose one
+
+| Provider | Where to get it | Cost |
+|----------|----------------|------|
+| **Google AI (Gemini)** — recommended | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free tier available |
+| **Anthropic (Claude)** | [console.anthropic.com](https://console.anthropic.com/) | Paid |
+
+### From your server operator
+
+| What | Notes |
+|------|-------|
+| **Server URL** | A publicly accessible HTTPS URL where Figma can send events. Use [ngrok](https://ngrok.com) for local testing. |
+| **Webhook passcode** | Any secret string you choose — used to verify that webhook events genuinely come from Figma. |
+
+---
+
 ## How it works
 
 Figma sends a `FILE_COMMENT` webhook event to your server whenever a comment is posted in your team. FigWatch checks whether the comment contains a trigger word (`@ux`, `@tone`, etc.), fetches the frame data from Figma, runs the AI audit, and posts the result as a reply — all within the same comment thread.
-
-## Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/) with Docker Compose
-- A publicly accessible HTTPS URL (or [ngrok](https://ngrok.com) for local testing)
-- A [Figma Personal Access Token](https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens) from an account with access to your team
-- Your Figma **team ID** (see below)
-- An AI API key — choose one:
-  - [Google AI API key](https://aistudio.google.com/apikey) for Gemini — **free tier available**
-  - [Anthropic API key](https://console.anthropic.com/) for Claude
 
 ## Quick start
 
