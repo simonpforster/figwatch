@@ -48,6 +48,7 @@ _repo_root = os.path.dirname(os.path.abspath(__file__))
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
+from figwatch.ack_updater import AckUpdater
 from figwatch.domain import WorkItem, load_trigger_config, match_trigger
 from figwatch.log_context import (
     new_audit_id, set_audit_context, reset_audit_context, clear_audit_context,
@@ -162,14 +163,18 @@ def _run_audit(item, ack_id, trigger_config):
     logger.info('reply posted', extra={'reply_to': item.reply_to_id})
 
 
-def _worker_loop(work_queue: InstrumentedQueue, stop_event, trigger_config, max_attempts):
+def _worker_loop(work_queue: InstrumentedQueue, stop_event, trigger_config,
+                 max_attempts, ack_updater: AckUpdater):
     while not stop_event.is_set():
         queued = work_queue.get(timeout=1)
         if queued is None:
-            # Either Queue.Empty (timed out) or poison pill.
             if stop_event.is_set():
                 break
             continue
+
+        # Stop the ack updater from touching this item's ack. Do this
+        # BEFORE reading ack_id so we can't race with an in-flight update.
+        ack_updater.cancel(queued.audit_id)
 
         item = queued.item
         ack_id = queued.ack_id
@@ -271,7 +276,8 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event, trigger_config, max_
 # ── HTTP handler ───────────────────────────────────────────────────────
 
 def _make_handler(pat, passcode, allowed_file_keys, locale, model, claude_path,
-                  trigger_config, processed_ids, processed_lock, work_queue):
+                  trigger_config, processed_ids, processed_lock, work_queue,
+                  ack_updater: AckUpdater):
     class WebhookHandler(BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path == '/health':
@@ -377,6 +383,10 @@ def _make_handler(pat, passcode, allowed_file_keys, locale, model, claude_path,
             )
             work_queue.put(queued)
 
+            # Record initial displayed position so the updater only fires
+            # when the position actually changes.
+            ack_updater.track_initial(audit_id, position=ahead)
+
             stats = work_queue.stats()
             logger.info('queue.enqueued', extra={'depth': stats.depth})
 
@@ -422,6 +432,7 @@ def main():
     port = int(os.environ.get('FIGWATCH_PORT', '8080'))
     worker_count = int(os.environ.get('FIGWATCH_WORKERS', '4'))
     max_attempts = int(os.environ.get('FIGWATCH_MAX_ATTEMPTS', '3'))
+    queue_update_rpm = int(os.environ.get('FIGWATCH_QUEUE_UPDATE_RPM', '5'))
     claude_path = 'api'
 
     trigger_config = load_trigger_config()
@@ -432,11 +443,15 @@ def main():
     work_queue = InstrumentedQueue()
     stop_event = threading.Event()
 
+    ack_updater = AckUpdater(work_queue, rate_per_minute=queue_update_rpm)
+    ack_updater.start()
+
     logger.info(
         '\U0001f50d figwatch starting',
         extra={
             'port': port, 'workers': worker_count, 'model': model,
             'locale': locale, 'max_attempts': max_attempts,
+            'queue_update_rpm': queue_update_rpm,
             'triggers': triggers_str,
             'files': ','.join(sorted(allowed_file_keys)) if allowed_file_keys else 'all',
         },
@@ -445,7 +460,7 @@ def main():
     worker_threads = [
         threading.Thread(
             target=_worker_loop,
-            args=(work_queue, stop_event, trigger_config, max_attempts),
+            args=(work_queue, stop_event, trigger_config, max_attempts, ack_updater),
             name=f'figwatch-worker-{i}',
             daemon=True,
         )
@@ -458,6 +473,7 @@ def main():
         pat, passcode, allowed_file_keys,
         locale, model, claude_path,
         trigger_config, processed_ids, processed_lock, work_queue,
+        ack_updater,
     )
     server = HTTPServer(('', port), handler)
 
@@ -473,6 +489,7 @@ def main():
     try:
         server.serve_forever()
     finally:
+        ack_updater.stop()
         for t in worker_threads:
             t.join(timeout=5)
         logger.info('\u23f9 all workers stopped — exiting')

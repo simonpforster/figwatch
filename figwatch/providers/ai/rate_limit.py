@@ -47,6 +47,15 @@ class TokenBucket:
             # check the bucket while we wait.
             self._sleep(wait_seconds)
 
+    def try_acquire(self, tokens: int = 1) -> bool:
+        """Non-blocking token acquire. Returns True on success, False if empty."""
+        with self._lock:
+            self._refill()
+            if self._tokens >= tokens:
+                self._tokens -= tokens
+                return True
+            return False
+
     def _refill(self) -> None:
         now = self._now()
         elapsed = now - self._last_refill

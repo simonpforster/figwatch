@@ -1,15 +1,23 @@
-"""Instrumented work queue with depth tracking and per-item wait time."""
+"""Instrumented work queue with depth tracking, wait-time stamping, and a
+FIFO mirror used by the ack updater to compute per-audit queue positions.
+"""
 
 import queue
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 
 @dataclass
 class QueuedItem:
-    """Wrapper around a WorkItem tracking queue/processing metadata."""
+    """Wrapper around a WorkItem tracking queue/processing metadata.
+
+    `ack_id` is mutable: the AckUpdater posts a new ack and writes the new
+    ID back onto this object while the item is still in the queue. Workers
+    only read ack_id after get() returns the item, at which point the
+    updater is guaranteed to have stopped touching it (via cancel()).
+    """
     item: Any
     ack_id: Optional[str]
     audit_id: str
@@ -29,21 +37,27 @@ class QueueStats:
 
 
 class InstrumentedQueue:
-    """Thin wrapper over queue.Queue with depth counters and wait-time stamping.
-
-    `put()` increments enqueued and stamps enqueued_at onto the wrapped
-    QueuedItem (or leaves existing timestamp alone for retries that re-put).
-    `get()` increments dequeued, computes waited_seconds, and returns the item.
+    """Thin wrapper over queue.Queue with depth counters, wait-time stamping,
+    and a parallel FIFO mirror (`snapshot_order`) so the AckUpdater can walk
+    current queue contents to compute positions.
     """
 
     def __init__(self):
         self._queue: queue.Queue = queue.Queue()
         self._stats_lock = threading.Lock()
         self._stats = QueueStats()
+        # FIFO mirror keyed by audit_id for O(1) find and O(n) position lookup.
+        # Duplicate audit_ids are not supported — audit_ids are UUID-derived
+        # and should always be unique per run.
+        self._ordered_ids: List[str] = []
+        self._items_by_id: dict = {}
 
     def put(self, queued: Any) -> None:
         with self._stats_lock:
             self._stats.enqueued += 1
+            if isinstance(queued, QueuedItem):
+                self._ordered_ids.append(queued.audit_id)
+                self._items_by_id[queued.audit_id] = queued
         self._queue.put(queued)
 
     def get(self, timeout: Optional[float] = None) -> Optional[QueuedItem]:
@@ -53,6 +67,12 @@ class InstrumentedQueue:
             return None
         with self._stats_lock:
             self._stats.dequeued += 1
+            if isinstance(queued, QueuedItem):
+                try:
+                    self._ordered_ids.remove(queued.audit_id)
+                except ValueError:
+                    pass
+                self._items_by_id.pop(queued.audit_id, None)
         if isinstance(queued, QueuedItem):
             queued.waited_seconds = time.monotonic() - queued.enqueued_at
         return queued
@@ -74,3 +94,21 @@ class InstrumentedQueue:
     def qsize(self) -> int:
         """Pass-through to underlying queue.Queue.qsize() — approximate."""
         return self._queue.qsize()
+
+    def snapshot_order(self) -> List[QueuedItem]:
+        """Return a FIFO snapshot of currently queued items.
+
+        Used by AckUpdater to compute per-audit queue positions. O(n) copy
+        under the stats lock.
+        """
+        with self._stats_lock:
+            return [
+                self._items_by_id[aid]
+                for aid in self._ordered_ids
+                if aid in self._items_by_id
+            ]
+
+    def find(self, audit_id: str) -> Optional[QueuedItem]:
+        """Return the QueuedItem for a given audit_id if still queued."""
+        with self._stats_lock:
+            return self._items_by_id.get(audit_id)
