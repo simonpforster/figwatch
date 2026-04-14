@@ -145,6 +145,7 @@ Within seconds you should see the audit appear as a reply in the same thread.
 | `FIGWATCH_MAX_ATTEMPTS` | No | `3` | Retry attempts per audit before giving up (backoff: 30s, 2m, 5m) |
 | `FIGWATCH_GEMINI_RPM` | No | `15` | Gemini requests-per-minute cap. Workers block locally when the limit is reached rather than hitting 429s. Set to `0` to disable. |
 | `FIGWATCH_ANTHROPIC_RPM` | No | `5` | Anthropic requests-per-minute cap. Set to `0` to disable. |
+| `FIGWATCH_QUEUE_UPDATE_RPM` | No | `5` | Live queue-position ack updates per minute. When audits stack up behind others, a background worker refreshes their "N ahead of you" ack messages as the queue drains. Capped well below Figma's write budget so core audit replies always have headroom. Set to `0` to disable — acks then stay at their initial position until picked up. |
 | `FIGWATCH_LOG_LEVEL` | No | `INFO` | `DEBUG`, `INFO`, `WARNING`, or `ERROR`. `DEBUG` shows ack lifecycle, Figma API calls, rate limiter acquires. |
 | `FIGWATCH_LOG_FORMAT` | No | `text` | `text` for human-readable output (Dozzle-friendly, ANSI colors in TTY), or `json` for one JSON object per line (for log aggregators like Loki, Datadog). |
 

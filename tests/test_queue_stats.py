@@ -39,8 +39,8 @@ def test_get_on_empty_queue_returns_none():
 
 def test_depth_tracks_puts_minus_gets():
     q = InstrumentedQueue()
-    for _ in range(5):
-        q.put(_queued())
+    for i in range(5):
+        q.put(_queued(audit_id=f'd{i}'))
     assert q.depth == 5
     q.get(timeout=1)
     q.get(timeout=1)
@@ -132,3 +132,58 @@ def test_queued_item_defaults():
     assert item.attempt == 1
     assert item.waited_seconds == 0.0
     assert item.enqueued_at > 0
+
+
+# ── FIFO mirror (snapshot_order, find) ───────────────────────────────
+
+def test_snapshot_order_reflects_insertion_order():
+    q = InstrumentedQueue()
+    q.put(_queued(audit_id='a'))
+    q.put(_queued(audit_id='b'))
+    q.put(_queued(audit_id='c'))
+    order = q.snapshot_order()
+    assert [qi.audit_id for qi in order] == ['a', 'b', 'c']
+
+
+def test_snapshot_order_updates_after_get():
+    q = InstrumentedQueue()
+    q.put(_queued(audit_id='a'))
+    q.put(_queued(audit_id='b'))
+    q.put(_queued(audit_id='c'))
+    q.get(timeout=1)  # removes 'a'
+    order = q.snapshot_order()
+    assert [qi.audit_id for qi in order] == ['b', 'c']
+
+
+def test_snapshot_order_empty():
+    q = InstrumentedQueue()
+    assert q.snapshot_order() == []
+
+
+def test_find_returns_queued_item_by_audit_id():
+    q = InstrumentedQueue()
+    q.put(_queued(audit_id='a'))
+    found = q.find('a')
+    assert found is not None
+    assert found.audit_id == 'a'
+
+
+def test_find_returns_none_for_missing_audit_id():
+    q = InstrumentedQueue()
+    assert q.find('nonexistent') is None
+
+
+def test_find_returns_none_after_get():
+    q = InstrumentedQueue()
+    q.put(_queued(audit_id='a'))
+    q.get(timeout=1)
+    assert q.find('a') is None
+
+
+def test_snapshot_order_returns_copy_not_reference():
+    q = InstrumentedQueue()
+    q.put(_queued(audit_id='a'))
+    order = q.snapshot_order()
+    order.clear()
+    # Original queue state should be unchanged
+    assert q.find('a') is not None
