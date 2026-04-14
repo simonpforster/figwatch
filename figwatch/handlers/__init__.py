@@ -1,20 +1,8 @@
 """Shared handler utilities."""
 
-import json
 import os
 import re
-import time
-import urllib.error
-import urllib.parse
-import urllib.request
-
-# ── Status constants (shared by watcher.py and the macOS app) ───────
-
-STATUS_LIVE = 'live'
-STATUS_DETECTED = 'detected'
-STATUS_PROCESSING = 'processing'
-STATUS_REPLIED = 'replied'
-STATUS_ERROR = 'error'
+import subprocess
 
 
 def strip_markdown(text):
@@ -31,38 +19,8 @@ def subprocess_env():
     """Augmented PATH for subprocess calls (covers Homebrew and common install locations)."""
     return {
         **os.environ,
-        "PATH": f"/opt/homebrew/bin:/usr/local/bin:{os.environ.get('PATH', '/usr/bin:/bin')}",
+        'PATH': f"/opt/homebrew/bin:/usr/local/bin:{os.environ.get('PATH', '/usr/bin:/bin')}",
     }
-
-
-def urllib_quote(s):
-    """URL-encode a string for Figma API paths."""
-    return urllib.parse.quote(s, safe='')
-
-
-def figma_get_retry(path, pat, retries=1):
-    """GET a Figma API endpoint with retry on 429. Returns parsed JSON or None."""
-    for attempt in range(retries + 1):
-        try:
-            req = urllib.request.Request(
-                f'https://api.figma.com/v1{path}',
-                headers={'X-Figma-Token': pat}
-            )
-            with urllib.request.urlopen(req, timeout=15) as r:
-                return json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < retries:
-                wait = 0
-                try:
-                    wait = int(e.headers.get('Retry-After', '0') or 0)
-                except Exception:
-                    wait = 0
-                time.sleep(max(wait, 2))
-                continue
-            return None
-        except Exception:
-            return None
-    return None
 
 
 def parse_claude_output(result, fallback_msg='Unable to generate evaluation.'):

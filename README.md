@@ -1,13 +1,13 @@
 # FigWatch
 
-A Figma comment watcher powered by Claude Code. Drop a comment like `@tone` or `@ux` on any frame, and FigWatch replies with a detailed audit directly in the comment thread.
+An AI-powered Figma design auditor. Drop a comment like `@tone` or `@ux` on any frame, and FigWatch replies with a detailed audit directly in the comment thread. Supports Google Gemini and Anthropic Claude.
 
 Runs as a **macOS menu bar app** or a **headless Docker server** — same core, two deployment options.
 
 ## Features
 
 - **Multi-file watching** — watch as many Figma files as you want simultaneously
-- **Configurable triggers** — `@tone` and `@ux` are built in; add your own backed by any Claude skill file (`.md`)
+- **Configurable triggers** — `@tone` and `@ux` are built in; add your own backed by any skill file (`.md`)
 - **Generic skill execution** — FigWatch introspects each skill to determine what Figma data it needs (screenshot, node tree, text nodes, variables, styles, etc.) and fetches only what's required
 - **Concurrent workers** — audits run on separate worker queues; configure worker counts in Settings (macOS)
 - **Immediate acknowledgment** — posts a "working on it" reply while Claude processes the audit
@@ -39,8 +39,9 @@ This downloads the latest release, installs `FigWatch.app` to `/Applications`, c
 See [docs/docker.md](docs/docker.md) for the full setup guide. Quick start:
 
 ```bash
-cp .env.example .env   # fill in FIGMA_PAT, FIGWATCH_FILES, ANTHROPIC_API_KEY
+cp .env.example .env   # fill in FIGMA_PAT, FIGWATCH_WEBHOOK_PASSCODE, GOOGLE_API_KEY
 docker compose up -d --build
+# then register a webhook with Figma — see docs/docker.md
 ```
 
 ## Requirements
@@ -52,21 +53,22 @@ docker compose up -d --build
 
 ### Docker / server
 - Docker with Docker Compose
-- Figma Personal Access Token
-- Anthropic API key
-
-Claude Code is bundled inside the container — no local install needed.
+- A publicly accessible URL (or ngrok for local testing)
+- Figma Personal Access Token + Figma team ID
+- AI API key — choose one:
+  - [Google AI API key](https://aistudio.google.com/apikey) for Gemini (free tier available)
+  - [Anthropic API key](https://console.anthropic.com/) for Claude
 
 ## How it works
 
-1. FigWatch polls your Figma files for new comments on a configurable interval (default: 30s)
-2. When it spots a trigger keyword, it fetches the relevant data from Figma (screenshot, node tree, etc.)
-3. It posts an acknowledgment reply immediately, then runs Claude against the skill file
-4. The audit is posted as a reply in the same comment thread
+1. Someone pins a comment containing a trigger word (e.g. `@ux`) to a Figma frame
+2. Figma sends a webhook event to FigWatch immediately
+3. FigWatch posts an acknowledgment reply, then fetches the relevant data (screenshot, node tree, etc.)
+4. The AI evaluates the skill and posts the audit as a reply in the same comment thread
 
-**macOS app:** click the menu bar icon, paste a Figma file URL, click **Watch**. Triggers work immediately.
+**macOS app:** polls Figma on a timer — click the menu bar icon, paste a Figma file URL, click **Watch**.
 
-**Server:** configure via environment variables — see [docs/docker.md](docs/docker.md).
+**Server:** event-driven via Figma webhooks — configure via environment variables and register a webhook with Figma. See [docs/docker.md](docs/docker.md) for the full setup guide.
 
 ## Built-in triggers
 
@@ -120,18 +122,36 @@ The Docker server is configured entirely via environment variables — see [docs
 ## Architecture
 
 ```
-macos/FigWatch.py    macOS menu bar app (PyObjC) — UI, state, worker queues
-server.py            headless server entry point — reads env vars, starts watchers
-  ↓ (both entry points use the same core)
-figwatch/watcher.py           FigmaWatcher per file — polls comments, detects triggers, dispatches WorkItems
-figwatch/handlers/generic.py  resolves skills, fetches Figma data, runs Claude, posts replies
-figwatch/handlers/__init__.py shared utilities (strip_markdown, subprocess_env, figma_get_retry, etc.)
-figwatch/skills/              bundled skill definitions (.md) + reference files
+server.py                    headless webhook server — HTTP, passcode verification, thread pool
+macos/FigWatch.py            macOS menu bar app (PyObjC) — UI, state, worker queues
+  ↓ (both use the same core)
+figwatch/domain.py           WorkItem, status constants, trigger config + matching
+figwatch/processor.py        process_work_item — ack → run skill → post reply
+figwatch/watcher.py          FigmaWatcher — polls comments, detects triggers (macOS path)
+figwatch/skills.py           skill discovery, introspection, prompt building, execution
+figwatch/providers/
+  figma.py                   Figma REST API + data fetching (screenshot, node tree, …)
+  ai/__init__.py             AIProvider protocol + make_provider() factory
+  ai/gemini.py               GeminiProvider  (Google Generative AI)
+  ai/anthropic.py            AnthropicProvider  (Anthropic Messages API)
+  ai/claude_cli.py           ClaudeCLIProvider  (Claude Code CLI — macOS only)
+figwatch/handlers/__init__.py shared utilities (strip_markdown, subprocess_env, …)
+figwatch/skills/             bundled skill definitions (.md) + reference files
 ```
 
-- **No hardcoded handlers** — all triggers (including built-in `@tone` and `@ux`) route through the same generic skill execution pipeline
+- **Provider-agnostic business logic** — `skills.py` and `processor.py` call `provider.call(prompt, image)` with no knowledge of which AI backend is in use; adding a new provider is one file + one line in `make_provider()`
+- **No hardcoded handlers** — all triggers (including built-in `@tone` and `@ux`) route through the same skill execution pipeline
 - **Fast path / slow path split** — `detect_triggers()` is a single API call (<1s); `process_work_item()` runs on worker threads and can take 30–120s
 - **Multi-file, multi-worker** — each watched file gets its own `FigmaWatcher` thread; work items are dispatched to shared queues processed by configurable worker pools
+
+## What's new in v1.3.0
+
+- **Webhook-driven server** — replaced polling with Figma `FILE_COMMENT` webhooks; audits trigger in real time with no polling delay
+- **Google Gemini support** — primary provider for Docker deployments (free tier available); Anthropic Claude remains fully supported
+- **Progressive image fallback** — screenshot attempts PNG@1x → PNG@0.5x → JPG@1x → JPG@0.5x → JPG@0.25x to stay under the 5 MB API limit
+- **429 retry handling** — both Gemini and Anthropic rate-limit errors are caught and retried once after the suggested delay
+- **Domain-driven package structure** — business logic (`processor.py`, `skills.py`) separated from provider implementations (`providers/figma.py`, `providers/ai/`)
+- **Concurrent webhook workers** — `ThreadPoolExecutor` replaces thread-per-request; configurable via `FIGWATCH_WORKERS`
 
 ## What's new in v1.2.0
 

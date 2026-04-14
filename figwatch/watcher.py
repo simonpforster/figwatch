@@ -1,157 +1,24 @@
 """FigWatch comment watcher — polls Figma for trigger comments and dispatches work items."""
 
 import json
-import math
+import logging
 import os
-import queue
-import re
 import threading
-import urllib.parse
-import urllib.request
-from collections import namedtuple
 
-from figwatch.handlers import STATUS_PROCESSING, STATUS_REPLIED, STATUS_ERROR
+from figwatch.domain import WorkItem, load_trigger_config, match_trigger
+from figwatch.processor import process_work_item
+from figwatch.providers.figma import figma_get
 
-FIGMA_API = 'https://api.figma.com/v1'
+logger = logging.getLogger(__name__)
 
-# ── WorkItem ───────────────────────────────────────────────────────
-
-WorkItem = namedtuple('WorkItem', [
-    'file_key', 'comment_id', 'reply_to_id', 'node_id',
-    'trigger', 'skill_path', 'user_handle', 'extra',
-    'locale', 'model', 'reply_lang', 'pat', 'claude_path', 'on_status',
-])
-
-# ── Trigger config ─────────────────────────────────────────────────
-
-DEFAULT_TRIGGERS = [
-    {"trigger": "@tone", "skill": "builtin:tone"},
-    {"trigger": "@ux", "skill": "builtin:ux"},
-]
+_EM_DASH = '\u2014'
+_OWN_REPLY_MARKERS = (_EM_DASH + ' Claude', _EM_DASH + ' Gemini')
 
 
-def load_trigger_config():
-    """Read triggers from ~/.figwatch/config.json, fall back to defaults."""
-    try:
-        config_path = os.path.join(os.path.expanduser('~'), '.figwatch', 'config.json')
-        with open(config_path) as f:
-            config = json.load(f)
-        triggers = config.get('triggers')
-        if triggers and isinstance(triggers, list):
-            return triggers
-    except Exception:
-        pass
-    return list(DEFAULT_TRIGGERS)
-
-
-def match_trigger(message, trigger_config):
-    """Match a comment message against configured triggers.
-
-    Returns {"trigger": str, "skill": str, "extra": str} or None.
-    """
-    lower = message.lower().strip()
-    for entry in trigger_config:
-        trigger = entry.get('trigger', '')
-        if trigger and trigger.lower() in lower:
-            idx = lower.index(trigger.lower())
-            extra = message[idx + len(trigger):].strip()
-            return {'trigger': trigger, 'skill': entry.get('skill', ''), 'extra': extra}
-    return None
-
-
-# ── Figma REST API ──────────────────────────────────────────────────
-
-def _make_request(url, pat, method='GET', body=None):
-    headers = {'X-Figma-Token': pat}
-    data = None
-    if body is not None:
-        headers['Content-Type'] = 'application/json'
-        data = json.dumps(body).encode()
-    req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=15) as r:
-        if method == 'DELETE':
-            return None
-        return json.loads(r.read())
-
-
-def figma_get(path, pat):
-    return _make_request(f'{FIGMA_API}{path}', pat)
-
-
-def figma_post(path, body, pat):
-    return _make_request(f'{FIGMA_API}{path}', pat, method='POST', body=body)
-
-
-def figma_delete(path, pat):
-    _make_request(f'{FIGMA_API}{path}', pat, method='DELETE')
-
-
-# ── Text extraction ─────────────────────────────────────────────────
-
-def extract_text_from_node(node):
-    texts = []
-
-    def walk(n):
-        if n.get('visible') is False:
-            return
-        if n.get('type') == 'TEXT' and (n.get('characters') or '').strip():
-            box = n.get('absoluteBoundingBox') or {}
-            texts.append({
-                'name': n.get('name', ''),
-                'text': n['characters'],
-                'id': n.get('id', ''),
-                'x': box.get('x', 0),
-                'y': box.get('y', 0),
-                'w': box.get('width', 0),
-                'h': box.get('height', 0),
-            })
-        for child in n.get('children', []):
-            walk(child)
-
-    walk(node)
-    return texts
-
-
-def target_texts(node, all_texts, comment_meta):
-    if node.get('type') == 'TEXT':
-        return {'texts': all_texts, 'targeted': True, 'target_name': node.get('name'), 'primary_text': None}
-
-    offset = (comment_meta or {}).get('node_offset')
-    node_box = node.get('absoluteBoundingBox')
-    if offset and node_box and len(all_texts) > 1:
-        pin_x = node_box.get('x', 0) + (offset.get('x') or 0)
-        pin_y = node_box.get('y', 0) + (offset.get('y') or 0)
-
-        def dist(t):
-            cx = t['x'] + t['w'] / 2
-            cy = t['y'] + t['h'] / 2
-            return math.sqrt((pin_x - cx) ** 2 + (pin_y - cy) ** 2)
-
-        dists = [(t, dist(t)) for t in all_texts]
-        closest, closest_dist = min(dists, key=lambda x: x[1])
-
-        if closest_dist < 200:
-            dists.sort(key=lambda x: x[1])
-            nearby = [t for t, _ in dists[:min(5, len(dists))]]
-            return {
-                'texts': nearby, 'targeted': True,
-                'target_name': closest['name'], 'primary_text': closest['text'],
-            }
-
-    return {'texts': all_texts, 'targeted': False, 'target_name': None, 'primary_text': None}
-
-
-def detect_locale(extra, default):
-    locales = ['de', 'fr', 'nl', 'benelux', 'uk']
-    for word in (extra or '').lower().split():
-        if word in locales:
-            return word
-    return default
-
-
-# ── Processed comment tracking ──────────────────────────────────────
+# ── Processed comment tracking ────────────────────────────────────────
 
 _processed_path_cache = None
+
 
 def _processed_path():
     global _processed_path_cache
@@ -181,29 +48,24 @@ def save_processed(ids):
         json.dump(id_list, f)
 
 
-# ── Trigger detection (fast path — 1 API call) ─────────────────────
-
-EM_DASH = '\u2014'
-
+# ── Trigger detection (fast path — 1 API call) ────────────────────────
 
 def detect_triggers(file_key, pat, processed_ids, trigger_config, *, log, on_status=None):
     """Fetch comments, find trigger matches, return list[WorkItem].
 
-    Fast path: single API call, <1s. Does NOT call Claude.
+    Fast path: single API call, <1s. Does NOT call any AI provider.
     """
     data = figma_get(f'/files/{file_key}/comments', pat)
     comments = data.get('comments', []) if data else []
 
     comment_map = {c['id']: c for c in comments}
 
-    # Find threads we already replied to
     replied_to = set()
     for c in comments:
-        if c.get('parent_id') and EM_DASH + ' Claude' in (c.get('message') or ''):
+        if c.get('parent_id') and any(m in (c.get('message') or '') for m in _OWN_REPLY_MARKERS):
             replied_to.add(c['parent_id'])
             processed_ids.add(c['parent_id'])
 
-    # Filter candidates
     candidates = []
     for c in comments:
         if c['id'] in processed_ids or c.get('resolved_at'):
@@ -212,15 +74,13 @@ def detect_triggers(file_key, pat, processed_ids, trigger_config, *, log, on_sta
             if (c.get('client_meta') or {}).get('node_id'):
                 candidates.append(c)
         else:
-            if EM_DASH + ' Claude' not in (c.get('message') or ''):
+            if not any(m in (c.get('message') or '') for m in _OWN_REPLY_MARKERS):
                 candidates.append(c)
 
     initial_count = len(processed_ids)
     items = []
     for comment in candidates:
-        if comment['id'] in processed_ids:
-            continue
-        if comment['id'] in replied_to:
+        if comment['id'] in processed_ids or comment['id'] in replied_to:
             continue
         if comment.get('parent_id') and comment['parent_id'] in replied_to:
             continue
@@ -252,11 +112,11 @@ def detect_triggers(file_key, pat, processed_ids, trigger_config, *, log, on_sta
             skill_path=match['skill'],
             user_handle=user_handle,
             extra=match['extra'],
-            locale=None,      # filled by caller
-            model=None,       # filled by caller
-            reply_lang=None,  # filled by caller
+            locale=None,
+            model=None,
+            reply_lang=None,
             pat=pat,
-            claude_path=None, # filled by caller
+            claude_path=None,
             on_status=on_status,
         )
         items.append(item)
@@ -267,79 +127,14 @@ def detect_triggers(file_key, pat, processed_ids, trigger_config, *, log, on_sta
     return items
 
 
-# ── Work item processing (slow path — calls Claude) ────────────────
-
-def process_work_item(item):
-    """Process a single WorkItem: post ack, run handler, post reply.
-
-    This is the slow path — runs on a worker thread.
-    """
-    from figwatch.handlers.generic import execute_skill
-
-    file_key = item.file_key
-    pat = item.pat
-    reply_to_id = item.reply_to_id
-    trigger = item.trigger
-
-    if item.on_status:
-        item.on_status(STATUS_PROCESSING, item)
-
-    # Post acknowledgment
-    ack_id = None
-    try:
-        ack = figma_post(f'/files/{file_key}/comments', {
-            'message': f'\u23f3 {trigger} audit received \u2014 Claude is working on it\u2026',
-            'comment_id': reply_to_id,
-        }, pat)
-        ack_id = ack.get('id')
-    except Exception:
-        pass
-
-    try:
-        response = execute_skill(item)
-
-        if ack_id:
-            try:
-                figma_delete(f'/files/{file_key}/comments/{ack_id}', pat)
-            except Exception:
-                pass
-
-        # Figma API comment limit is ~5000 chars
-        FIGMA_COMMENT_LIMIT = 4900
-        if len(response) > FIGMA_COMMENT_LIMIT:
-            truncated = response[:FIGMA_COMMENT_LIMIT - 60]
-            last_nl = truncated.rfind('\n')
-            if last_nl > FIGMA_COMMENT_LIMIT // 2:
-                truncated = truncated[:last_nl]
-            response = truncated + f'\n\n(truncated \u2014 full audit was {len(response)} chars)\n\n{EM_DASH} Claude'
-
-        figma_post(f'/files/{file_key}/comments', {
-            'message': response,
-            'comment_id': reply_to_id,
-        }, pat)
-
-        if item.on_status:
-            item.on_status(STATUS_REPLIED, item)
-
-    except Exception as err:
-        if ack_id:
-            try:
-                figma_delete(f'/files/{file_key}/comments/{ack_id}', pat)
-            except Exception:
-                pass
-        if item.on_status:
-            item.on_status(STATUS_ERROR, item, error=str(err))
-
-
-# ── Watcher class ───────────────────────────────────────────────────
+# ── Watcher class ─────────────────────────────────────────────────────
 
 class FigmaWatcher:
     def __init__(self, file_key, pat, *, locale='uk', model='sonnet', reply_lang='en',
                  interval=30, claude_path='claude', log=print,
                  trigger_config=None, dispatch=None, on_poll=None, on_status=None,
                  initial_delay=0,
-                 # Deprecated — use on_status instead
-                 on_reply=None):
+                 on_reply=None):  # on_reply deprecated — use on_status
         self.file_key = file_key
         self.pat = pat
         self.locale = locale
@@ -353,7 +148,7 @@ class FigmaWatcher:
         self.on_poll = on_poll
         self.on_status = on_status
         self.initial_delay = initial_delay
-        self._on_reply = on_reply  # deprecated
+        self._on_reply = on_reply
         self._stop_event = threading.Event()
         self._thread = None
         self._processed = load_processed()
@@ -400,7 +195,7 @@ class FigmaWatcher:
                     if self.dispatch:
                         self.dispatch(item)
                     else:
-                        process_work_item(item)
+                        process_work_item(item, trigger_config=self.trigger_config)
                         if self._on_reply:
                             self._on_reply(item.trigger, item.user_handle, item.node_id)
 
@@ -411,7 +206,7 @@ class FigmaWatcher:
             self._stop_event.wait(timeout=self.interval)
 
 
-# ── CLI / server entry point ────────────────────────────────────────
+# ── CLI entry point ───────────────────────────────────────────────────
 
 if __name__ == '__main__':
     import sys
