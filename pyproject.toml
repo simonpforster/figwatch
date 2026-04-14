@@ -8,7 +8,7 @@ requires-python = ">=3.9"
 # pip install -e ".[server]"  — installs API clients for server/Docker deployment
 server = [
     "anthropic",
-    "google-generativeai",
+    "google-genai",
 ]
 # pip install -e ".[dev]"  — installs test dependencies
 dev = [

@@ -1,4 +1,4 @@
-"""Google Generative AI (Gemini) provider."""
+"""Google Gen AI (Gemini) provider."""
 
 from figwatch.providers.ai import with_retry
 
@@ -14,25 +14,27 @@ class GeminiProvider:
 
     def call(self, prompt: str, image_path: 'str | None') -> str:
         try:
-            import google.generativeai as genai
+            from google import genai
+            from google.genai import types
         except ImportError:
-            raise RuntimeError('google-generativeai not installed — run: pip install google-generativeai')
+            raise RuntimeError('google-genai not installed — run: pip install google-genai')
 
         if self._rate_limiter:
             self._rate_limiter.acquire()
 
-        genai.configure(api_key=self._api_key)
-        model = genai.GenerativeModel(self._model_name)
+        client = genai.Client(api_key=self._api_key)
 
-        parts = []
+        contents = [prompt]
         if image_path:
             mime_type = 'image/jpeg' if image_path.endswith('.jpg') else 'image/png'
             with open(image_path, 'rb') as f:
-                parts.append({'mime_type': mime_type, 'data': f.read()})
-        parts.append(prompt)
+                contents.append(types.Part.from_bytes(data=f.read(), mime_type=mime_type))
 
         return with_retry(
-            lambda: model.generate_content(parts).text.strip(),
+            lambda: client.models.generate_content(
+                model=self._model_name,
+                contents=contents,
+            ).text.strip(),
             lambda e: '429' in str(e) or 'quota' in str(e).lower(),
             'gemini',
         )
