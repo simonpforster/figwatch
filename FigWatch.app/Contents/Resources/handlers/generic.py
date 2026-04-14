@@ -373,22 +373,9 @@ def execute_skill(item):
     with open(skill_path, encoding='utf-8') as f:
         skill_content = f.read()
 
-    # Load reference files from the skill's references/ directory
+    # The skill's references/ directory is made available via --add-dir below;
+    # Claude reads those files on demand instead of having them inlined here.
     skill_dir = os.path.dirname(skill_path)
-    refs_dir = os.path.join(skill_dir, 'references')
-    refs_section = ''
-    if os.path.isdir(refs_dir):
-        ref_parts = []
-        for fname in sorted(os.listdir(refs_dir)):
-            fpath = os.path.join(refs_dir, fname)
-            if os.path.isfile(fpath) and fname.endswith('.md'):
-                try:
-                    with open(fpath, encoding='utf-8') as f:
-                        ref_parts.append(f'--- {fname} ---\n{f.read()}')
-                except Exception:
-                    pass
-        if ref_parts:
-            refs_section = '\n\nReference files:\n' + '\n\n'.join(ref_parts)
 
     frame_name = tree_data.get('name', 'Unknown frame') if tree_data else 'Unknown frame'
 
@@ -420,7 +407,7 @@ def execute_skill(item):
     prompt = f"""You have a skill to evaluate a Figma design. Follow the skill instructions exactly.
 Use Mode 3 (Comment Reply) if the skill defines it.
 
-{skill_content}{refs_section}
+{skill_content}
 
 Now evaluate this screen:
 - Frame name: {frame_name}
@@ -447,7 +434,7 @@ CRITICAL RULES:
     cmd.extend(['--add-dir', skill_dir])
 
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=120, env=subprocess_env(),
+        result = subprocess.run(cmd, capture_output=True, timeout=300, env=subprocess_env(),
                                     cwd=os.path.expanduser('~'))
         reply = parse_claude_output(result)
         header = f'\U0001f5e3\ufe0f Claude {item.trigger} Audit \u2014 {frame_name}'
