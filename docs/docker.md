@@ -48,6 +48,7 @@ Fill in your values. Minimum required:
 ```env
 FIGMA_PAT=figd_your_token_here
 FIGWATCH_WEBHOOK_PASSCODE=choose-a-secret-passphrase
+FIGWATCH_TEAM_ID=1234567890
 GOOGLE_API_KEY=your_google_ai_key_here
 ```
 
@@ -131,6 +132,7 @@ All variables are documented in [`.env.example`](../.env.example) with sensible 
 |----------|-------------|
 | `FIGMA_PAT` | Figma Personal Access Token |
 | `FIGWATCH_WEBHOOK_PASSCODE` | Secret passphrase set when registering the webhook |
+| `FIGWATCH_TEAM_ID` | Figma team ID — needed for webhook registration and enables webhook health monitoring |
 | `GOOGLE_API_KEY` | Google AI API key — required when `FIGWATCH_MODEL` starts with `gemini` |
 | `ANTHROPIC_API_KEY` | Anthropic API key — required when `FIGWATCH_MODEL` is `sonnet`, `opus`, or `haiku` |
 
@@ -167,7 +169,6 @@ All variables are documented in [`.env.example`](../.env.example) with sensible 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OpenTelemetry collector endpoint (e.g. `http://otel-collector:4317`). Metrics disabled when unset. |
-| `FIGWATCH_TEAM_ID` | — | Figma team ID. Setting this enables the webhook monitor. |
 | `FIGWATCH_MONITOR_TICK` | `60` | Seconds between checking the next file in the rotation |
 | `FIGWATCH_MONITOR_GRACE` | `60` | Seconds before flagging a comment as a missed webhook |
 | `FIGWATCH_MONITOR_FILE_REFRESH` | `3600` | Seconds between re-enumerating team files |

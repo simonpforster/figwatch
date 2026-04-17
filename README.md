@@ -84,7 +84,7 @@ docker compose up -d --build
 Add your own triggers in **Settings → Triggers → + Add** (macOS), or mount a `custom-skills/` volume (Docker):
 
 1. Choose a trigger keyword (e.g. `@a11y`)
-2. Point it at a skill file (any `.md` file that instructs Claude what to do)
+2. Point it at a skill file (any `.md` file that instructs the AI what to do)
 3. FigWatch introspects the skill to determine what Figma data it needs
 4. Hot-reloads on all active watchers — no restart required
 
@@ -170,7 +170,7 @@ figwatch/skills/                 bundled skill definitions (.md) + reference fil
 - **Docker / server deployment** — run FigWatch as a headless server with no macOS dependency
 - **Multi-file watching** — watch multiple Figma files simultaneously with live status indicators (live, processing, replied, error) per file
 - **Configurable triggers** — add custom `@trigger` keywords backed by any skill file; hot-reload without restart
-- **Generic skill execution** — all triggers (including built-in `@tone` and `@ux`) run through a single pipeline; skills are introspected to determine what data they need, fetched in parallel, and executed via Claude
+- **Generic skill execution** — all triggers (including built-in `@tone` and `@ux`) run through a single pipeline; skills are introspected to determine what data they need, fetched in parallel, and executed via the AI provider
 - **Worker queues** — tone and UX audits run concurrently on separate worker pools; configure worker counts in Settings (1–5 each)
 - **Skill introspection cache** — custom skills are analysed once via Haiku to determine compatibility and data requirements; built-in skills use pre-seeded cache data
 - **Removed CDP dependency** — no more Chrome DevTools Protocol, no more auto-relaunching Figma, no more port 9222; file detection is now URL-based
