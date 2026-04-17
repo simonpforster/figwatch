@@ -91,6 +91,8 @@ curl -X POST https://api.figma.com/v2/webhooks \
   }'
 ```
 
+For full webhook API details, see the [Figma Webhooks documentation](https://www.figma.com/developers/api#webhooks_v2).
+
 Figma will immediately send a `PING` event to verify the endpoint is reachable. Check your logs:
 
 ```bash
