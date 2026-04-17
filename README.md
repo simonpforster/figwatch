@@ -39,7 +39,7 @@ This downloads the latest release, installs `FigWatch.app` to `/Applications`, c
 See [docs/docker.md](docs/docker.md) for the full setup guide. Quick start:
 
 ```bash
-cp .env.example .env   # fill in FIGMA_PAT, FIGWATCH_WEBHOOK_PASSCODE, GOOGLE_API_KEY
+cp .env.example .env   # fill in FIGMA_PAT, FIGWATCH_WEBHOOK_PASSCODE, FIGWATCH_TEAM_ID, GOOGLE_API_KEY
 docker compose up -d --build
 # then register a webhook with Figma — see docs/docker.md
 ```

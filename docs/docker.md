@@ -105,10 +105,10 @@ docker compose logs -f
 You should see:
 
 ```
-→ POST /webhook 200
+🏓 ping received
 ```
 
-If you see a 403, the passcode in the request doesn't match `FIGWATCH_WEBHOOK_PASSCODE` in your `.env`.
+If you see a 403 instead, the passcode in the request doesn't match `FIGWATCH_WEBHOOK_PASSCODE` in your `.env`.
 
 ## Using FigWatch
 
@@ -195,15 +195,14 @@ docker compose logs -f
 A healthy run looks like this:
 
 ```
-2026-04-14 19:19:06 INFO  server     📥 webhook received file=abc123 comment=1234567
-2026-04-14 19:19:06 INFO  server     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 💬 trigger matched user=alice
-2026-04-14 19:19:06 INFO  server     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 queue.enqueued depth=1
-2026-04-14 19:19:06 INFO  server     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 queue.dequeued depth=0 waited=0.10s
-2026-04-14 19:19:06 INFO  skills     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 running skill skill=builtin:ux
-2026-04-14 19:19:08 INFO  skills     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 skill returned chars=1842
-2026-04-14 19:19:08 INFO  server     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 reply posted reply_to=1234567
-2026-04-14 19:19:08 INFO  server     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 ✅ audit.completed queued=0.10s running=2.00s total=2.10s attempts=1
-
+2026-04-14 19:19:06 INFO  __main__     file=abc123 comment=1234567 📥 webhook received
+2026-04-14 19:19:06 INFO  __main__     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 user=alice 💬 trigger matched
+2026-04-14 19:19:06 INFO  __main__     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 depth=1 queue.enqueued
+2026-04-14 19:19:06 INFO  __main__     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 depth=0 waited=0.10s queue.dequeued
+2026-04-14 19:19:06 INFO  __main__     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 skill=builtin:ux running skill
+2026-04-14 19:19:08 INFO  __main__     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 chars=1842 skill returned
+2026-04-14 19:19:08 INFO  __main__     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 reply_to=1234567 reply posted
+2026-04-14 19:19:08 INFO  __main__     audit=a3f9e2d1 trigger=@ux node=176:24454 file=abc123 attempt=1 queued=0.10s running=2.00s total=2.10s attempts=1 ✅ audit.completed
 ```
 
 ### Correlating log lines for a single audit
@@ -218,17 +217,9 @@ The same works for `trigger=@ux`, `node=176:24454`, or `file=abc123` if you want
 
 ## Webhook health monitoring
 
-Figma webhooks can be unreliable — sometimes a comment is created but the webhook never fires. FigWatch can detect these missed webhooks by periodically checking the Figma comments API and comparing against what arrived via webhook.
+Figma webhooks can be unreliable — sometimes a comment is created but the webhook never fires. FigWatch detects these missed webhooks by periodically checking the Figma comments API and comparing against what arrived via webhook.
 
-### Enabling
-
-Set `FIGWATCH_TEAM_ID` to your Figma team ID:
-
-```env
-FIGWATCH_TEAM_ID=1234567890
-```
-
-On startup, FigWatch discovers all files in your team via the Figma API, then rotates through them one per tick (default 60 seconds). For each file it fetches recent comments and checks whether they were delivered via webhook. Missed comments are logged as warnings:
+Since `FIGWATCH_TEAM_ID` is already set (required for webhook registration), monitoring is enabled automatically. On startup, FigWatch discovers all files in your team via the Figma API, then rotates through them one per tick (default 60 seconds). For each file it fetches recent comments and checks whether they were delivered via webhook. Missed comments are logged as warnings:
 
 ```
 2026-04-17 10:30:12 WARNING monitor  monitor: missed webhook detected file=abc123 comment_id=9876543 comment_age_seconds=95
@@ -295,7 +286,7 @@ The free tier has a token-per-minute limit. FigWatch retries once after the sugg
 
 **Container exits immediately**
 - Check logs: `docker compose logs figwatch`
-- Most common cause: missing required env vars (`FIGMA_PAT`, `FIGWATCH_WEBHOOK_PASSCODE`, AI key)
+- Most common cause: missing required env vars (`FIGMA_PAT`, `FIGWATCH_WEBHOOK_PASSCODE`, `FIGWATCH_TEAM_ID`, AI key)
 
 ## Example production deployment
 
