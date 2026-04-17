@@ -40,8 +40,8 @@ jobs:
           context: .
           load: true
           tags: figwatch:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ hashFiles('pyproject.toml') }}
+          cache-to: type=gha,mode=max,scope=${{ hashFiles('pyproject.toml') }}
 
       - name: Smoke test — health endpoint
         run: |
@@ -136,8 +136,8 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ needs.check-version.outputs.version }}
             ghcr.io/${{ github.repository }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ hashFiles('pyproject.toml') }}
+          cache-to: type=gha,mode=max,scope=${{ hashFiles('pyproject.toml') }}
 
       - name: Build and push — same version (main)
         if: github.event_name == 'push' && needs.check-version.outputs.is_new == 'false'
@@ -146,8 +146,8 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ hashFiles('pyproject.toml') }}
+          cache-to: type=gha,mode=max,scope=${{ hashFiles('pyproject.toml') }}
 
       - name: Build and push (PR)
         if: github.event_name == 'pull_request'
@@ -156,8 +156,8 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ hashFiles('pyproject.toml') }}
+          cache-to: type=gha,mode=max,scope=${{ hashFiles('pyproject.toml') }}
 
   release:
     name: Release macOS app
