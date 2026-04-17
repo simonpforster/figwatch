@@ -77,18 +77,20 @@ This gives you a URL like `https://your-subdomain.ngrok-free.app`. Copy it — y
 
 ### 4. Register the webhook with Figma
 
-Run this curl command once. Replace the placeholders with your actual values:
+Run this curl command once. It reads `FIGMA_PAT` and `FIGWATCH_WEBHOOK_PASSCODE` from your `.env` — just replace `YOUR_TEAM_ID` and `YOUR_HOST`:
 
 ```bash
+source .env
+
 curl -X POST https://api.figma.com/v2/webhooks \
   -H "X-Figma-Token: $FIGMA_PAT" \
   -H "Content-Type: application/json" \
-  -d '{
-    "event_type": "FILE_COMMENT",
-    "team_id": "YOUR_TEAM_ID",
-    "endpoint": "https://YOUR_HOST/webhook",
-    "passcode": "YOUR_FIGWATCH_WEBHOOK_PASSCODE"
-  }'
+  -d "{
+    \"event_type\": \"FILE_COMMENT\",
+    \"team_id\": \"YOUR_TEAM_ID\",
+    \"endpoint\": \"https://YOUR_HOST/webhook\",
+    \"passcode\": \"$FIGWATCH_WEBHOOK_PASSCODE\"
+  }"
 ```
 
 For full webhook API details, see the [Figma Webhooks documentation](https://www.figma.com/developers/api#webhooks_v2).
