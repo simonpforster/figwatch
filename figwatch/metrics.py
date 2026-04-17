@@ -67,7 +67,7 @@ def init_metrics(service_name='figwatch'):
     audit_duration_view = View(
         instrument_name='figwatch.audit.duration_seconds',
         aggregation=ExplicitBucketHistogramAggregation(
-            boundaries=[1, 2, 5, 10, 15, 30, 45, 60, 90, 120, 180, 300],
+            boundaries=[1, 2, 5, 10, 15, 30, 45, 60, 90, 120, 180, 300, 450, 600, 900],
         ),
     )
 
