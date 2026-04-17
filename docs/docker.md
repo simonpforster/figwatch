@@ -102,10 +102,10 @@ Figma will immediately send a `PING` event to verify the endpoint is reachable. 
 docker compose logs -f
 ```
 
-You should see:
+You should see something like:
 
 ```
-🏓 ping received
+2026-04-17 12:00:00 INFO  __main__     🏓 ping received
 ```
 
 If you see a 403 instead, the passcode in the request doesn't match `FIGWATCH_WEBHOOK_PASSCODE` in your `.env`.
@@ -222,7 +222,7 @@ Figma webhooks can be unreliable — sometimes a comment is created but the webh
 Since `FIGWATCH_TEAM_ID` is already set (required for webhook registration), monitoring is enabled automatically. On startup, FigWatch discovers all files in your team via the Figma API, then rotates through them one per tick (default 60 seconds). For each file it fetches recent comments and checks whether they were delivered via webhook. Missed comments are logged as warnings:
 
 ```
-2026-04-17 10:30:12 WARNING monitor  monitor: missed webhook detected file=abc123 comment_id=9876543 comment_age_seconds=95
+2026-04-17 10:30:12 WARNING webhook_moni file=abc123 comment_id=9876543 comment_age_seconds=95 monitor: missed webhook detected
 ```
 
 The file list is refreshed hourly so new files are picked up automatically.
