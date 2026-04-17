@@ -7,9 +7,8 @@ WORKDIR /app
 
 COPY pyproject.toml .
 COPY figwatch/ ./figwatch/
-RUN pip install --no-cache-dir -e ".[server]"
-
 COPY server.py .
+RUN pip install --no-cache-dir ".[server]"
 
 VOLUME ["/app/custom-skills"]
 
