@@ -11,7 +11,7 @@ Setup involves two roles that are often different people — a **Figma admin** w
 | What | Where to get it | Used for |
 |------|----------------|---------|
 | **Figma Personal Access Token** | Figma → Settings → Security → [Personal access tokens](https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens) | Authenticating API requests |
-| **Figma team ID** | Figma URL when browsing your team: `figma.com/files/team/`**`1234567890`**`/…` | Registering the webhook |
+| **Figma team ID** | From your team URL: `figma.com/files/team/`**`1234567890`**`/…` — the number after `/team/` | Registering the webhook |
 
 > The Figma account providing the token must be on a **Professional or Organisation plan** — Figma webhooks are not available on Starter (free) accounts.
 
@@ -75,19 +75,7 @@ ngrok http 8080
 
 This gives you a URL like `https://your-subdomain.ngrok-free.app`. Copy it — you need it in the next step.
 
-### 4. Find your Figma team ID
-
-Open Figma and browse to your team's files. The URL looks like:
-
-```
-https://www.figma.com/files/team/1234567890/your-team-name
-```
-
-The number after `/team/` is your team ID.
-
-> **Professional or Organisation plan required.** Figma webhooks are only available on paid plans. Starter (free) accounts cannot register webhooks.
-
-### 5. Register the webhook with Figma
+### 4. Register the webhook with Figma
 
 Run this curl command once. Replace the placeholders with your actual values:
 
@@ -170,31 +158,16 @@ All variables are documented in [`.env.example`](../.env.example) with sensible 
 | `FIGWATCH_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, or `ERROR` |
 | `FIGWATCH_LOG_FORMAT` | `text` | `text` (human-readable, ANSI colors in TTY) or `json` (one object per line, for Loki/Datadog) |
 
-### Observability
+### Monitoring and observability
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OpenTelemetry collector endpoint (e.g. `http://otel-collector:4317`). Metrics disabled when unset. |
-
-### Webhook health monitoring
-
-| Variable | Default | Description |
-|----------|---------|-------------|
 | `FIGWATCH_TEAM_ID` | — | Figma team ID. Setting this enables the webhook monitor. |
 | `FIGWATCH_MONITOR_TICK` | `60` | Seconds between checking the next file in the rotation |
 | `FIGWATCH_MONITOR_GRACE` | `60` | Seconds before flagging a comment as a missed webhook |
 | `FIGWATCH_MONITOR_FILE_REFRESH` | `3600` | Seconds between re-enumerating team files |
 | `FIGWATCH_MONITOR_RPM` | `5` | Figma API req/min budget for the monitor |
-
-## Restricting to specific files
-
-By default FigWatch handles comments from all files in your Figma team. To restrict it:
-
-```env
-FIGWATCH_FILES=https://www.figma.com/design/abc123/File-One,https://www.figma.com/design/def456/File-Two
-```
-
-You can mix full URLs and bare file keys.
 
 ## Custom skills
 
@@ -318,6 +291,17 @@ The free tier has a token-per-minute limit. FigWatch retries once after the sugg
 **Container exits immediately**
 - Check logs: `docker compose logs figwatch`
 - Most common cause: missing required env vars (`FIGMA_PAT`, `FIGWATCH_WEBHOOK_PASSCODE`, AI key)
+
+## Example production deployment
+
+[figwatch-olivia](https://github.com/simonpforster/figwatch-olivia) is a complete deployment stack that adds:
+
+- **Cloudflare Tunnel** — HTTPS ingress without a reverse proxy or public IP
+- **OpenTelemetry Collector** — receives metrics from FigWatch and forwards to Prometheus
+- **Prometheus** — stores metrics with 30-day retention
+- **Grafana** — dashboards for audit duration, queue depth, and webhook reliability
+
+Clone it as a starting point for your own production setup.
 
 ## Managing webhooks
 
