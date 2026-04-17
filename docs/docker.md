@@ -77,7 +77,7 @@ This gives you a URL like `https://your-subdomain.ngrok-free.app`. Copy it — y
 
 ### 4. Register the webhook with Figma
 
-Run this curl command once. It reads `FIGMA_PAT` and `FIGWATCH_WEBHOOK_PASSCODE` from your `.env` — just replace `YOUR_TEAM_ID` and `YOUR_HOST`:
+Run this curl command once. It reads `FIGMA_PAT`, `FIGWATCH_WEBHOOK_PASSCODE`, and `FIGWATCH_TEAM_ID` from your `.env` — just replace `YOUR_HOST`:
 
 ```bash
 source .env
@@ -87,7 +87,7 @@ curl -X POST https://api.figma.com/v2/webhooks \
   -H "Content-Type: application/json" \
   -d "{
     \"event_type\": \"FILE_COMMENT\",
-    \"team_id\": \"YOUR_TEAM_ID\",
+    \"team_id\": \"$FIGWATCH_TEAM_ID\",
     \"endpoint\": \"https://YOUR_HOST/webhook\",
     \"passcode\": \"$FIGWATCH_WEBHOOK_PASSCODE\"
   }"
@@ -283,7 +283,7 @@ The free tier has a token-per-minute limit. FigWatch retries once after the sugg
 
 **No webhook events arriving**
 - Check that your endpoint is publicly reachable over HTTPS — Figma requires HTTPS
-- Verify the webhook is registered: `curl https://api.figma.com/v2/teams/YOUR_TEAM_ID/webhooks -H "X-Figma-Token: $FIGMA_PAT"`
+- Verify the webhook is registered: `curl https://api.figma.com/v2/teams/$FIGWATCH_TEAM_ID/webhooks -H "X-Figma-Token: $FIGMA_PAT"`
 - The PAT used to register the webhook must belong to an account that has access to the team on a paid plan
 - If using ngrok, make sure the tunnel is still running — free ngrok URLs expire on restart
 
@@ -312,7 +312,7 @@ Clone it as a starting point for your own production setup.
 List your registered webhooks:
 
 ```bash
-curl https://api.figma.com/v2/teams/YOUR_TEAM_ID/webhooks \
+curl https://api.figma.com/v2/teams/$FIGWATCH_TEAM_ID/webhooks \
   -H "X-Figma-Token: $FIGMA_PAT"
 ```
 

@@ -10,7 +10,7 @@ Runs as a **macOS menu bar app** or a **headless Docker server** — same core, 
 - **Configurable triggers** — `@tone` and `@ux` are built in; add your own backed by any skill file (`.md`)
 - **Generic skill execution** — FigWatch introspects each skill to determine what Figma data it needs (screenshot, node tree, text nodes, variables, styles, etc.) and fetches only what's required
 - **Concurrent workers** — audits run on separate worker queues; configure worker counts in Settings (macOS)
-- **Immediate acknowledgment** — posts a "working on it" reply while Claude processes the audit
+- **Immediate acknowledgment** — posts a "working on it" reply while the AI processes the audit
 - **Locale selector** — switch between UK, DE, FR, NL, and Benelux; the locale is passed to all skills
 - **macOS notifications** — get notified when audits are posted (macOS only)
 - **In-app updates** — check for and install updates directly from Settings (macOS only)
@@ -210,8 +210,6 @@ figwatch/skills/                 bundled skill definitions (.md) + reference fil
 </details>
 
 ## Development
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ### Prerequisites
 
