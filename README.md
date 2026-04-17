@@ -62,13 +62,15 @@ docker compose up -d --build
 ## How it works
 
 1. Someone pins a comment containing a trigger word (e.g. `@ux`) to a Figma frame
-2. Figma sends a webhook event to FigWatch immediately
-3. FigWatch posts an acknowledgment reply, then fetches the relevant data (screenshot, node tree, etc.)
+2. FigWatch detects the comment and posts an acknowledgment reply
+3. The relevant frame data (screenshot, node tree, etc.) is fetched from Figma
 4. The AI evaluates the skill and posts the audit as a reply in the same comment thread
 
-**macOS app:** polls Figma on a timer — click the menu bar icon, paste a Figma file URL, click **Watch**.
-
-**Server:** event-driven via Figma webhooks — configure via environment variables and register a webhook with Figma. See [docs/docker.md](docs/docker.md) for the full setup guide.
+| | macOS app | Docker server |
+|---|---|---|
+| **Detection** | Polls Figma on a configurable timer | Real-time via Figma `FILE_COMMENT` webhooks |
+| **Setup** | Paste a Figma file URL, click **Watch** | Register a webhook + set environment variables |
+| **Guide** | Built-in onboarding | [docs/docker.md](docs/docker.md) |
 
 ## Built-in triggers
 
@@ -122,21 +124,28 @@ The Docker server is configured entirely via environment variables — see [docs
 ## Architecture
 
 ```
-server.py                    headless webhook server — HTTP, passcode verification, thread pool
-macos/FigWatch.py            macOS menu bar app (PyObjC) — UI, state, worker queues
+server.py                        headless webhook server — HTTP, passcode auth, thread pool
+macos/FigWatch.py                macOS menu bar app (PyObjC) — UI, state, worker queues
   ↓ (both use the same core)
-figwatch/domain.py           WorkItem, status constants, trigger config + matching
-figwatch/processor.py        process_work_item — ack → run skill → post reply
-figwatch/watcher.py          FigmaWatcher — polls comments, detects triggers (macOS path)
-figwatch/skills.py           skill discovery, introspection, prompt building, execution
+figwatch/domain.py               WorkItem, status constants, trigger config + matching
+figwatch/processor.py            process_work_item — ack → run skill → post reply
+figwatch/watcher.py              FigmaWatcher — polls comments, detects triggers (macOS path)
+figwatch/skills.py               skill discovery, introspection, prompt building, execution
+figwatch/ack_updater.py          live queue-position updates on waiting audits
+figwatch/webhook_monitor.py      detects missed webhooks by reconciling against Figma API
+figwatch/queue_stats.py          queue depth tracking for ack messages
+figwatch/metrics.py              OpenTelemetry metric definitions
+figwatch/logging_config.py       structured logging setup (text + JSON formats)
+figwatch/log_context.py          per-audit contextual log fields
 figwatch/providers/
-  figma.py                   Figma REST API + data fetching (screenshot, node tree, …)
-  ai/__init__.py             AIProvider protocol + make_provider() factory
-  ai/gemini.py               GeminiProvider  (Google Generative AI)
-  ai/anthropic.py            AnthropicProvider  (Anthropic Messages API)
-  ai/claude_cli.py           ClaudeCLIProvider  (Claude Code CLI — macOS only)
-figwatch/handlers/__init__.py shared utilities (strip_markdown, subprocess_env, …)
-figwatch/skills/             bundled skill definitions (.md) + reference files
+  figma.py                       Figma REST API + data fetching (screenshot, node tree, …)
+  ai/__init__.py                 AIProvider protocol + make_provider() factory
+  ai/gemini.py                   GeminiProvider  (Google Generative AI)
+  ai/anthropic.py                AnthropicProvider  (Anthropic Messages API)
+  ai/claude_cli.py               ClaudeCLIProvider  (Claude Code CLI — macOS only)
+  ai/rate_limit.py               per-provider RPM rate limiting
+figwatch/handlers/__init__.py    shared utilities (strip_markdown, subprocess_env, …)
+figwatch/skills/                 bundled skill definitions (.md) + reference files
 ```
 
 - **Provider-agnostic business logic** — `skills.py` and `processor.py` call `provider.call(prompt, image)` with no knowledge of which AI backend is in use; adding a new provider is one file + one line in `make_provider()`
@@ -146,10 +155,13 @@ figwatch/skills/             bundled skill definitions (.md) + reference files
 
 ## What's new in v1.3.0
 
-- **Webhook-driven server** — replaced polling with Figma `FILE_COMMENT` webhooks; audits trigger in real time with no polling delay
+- **Webhook-driven server** — replaced polling with Figma `FILE_COMMENT` webhooks; audits trigger in real time with no polling delay. See the [Docker setup guide](docs/docker.md) for webhook registration.
 - **Google Gemini support** — primary provider for Docker deployments (free tier available); Anthropic Claude remains fully supported
+- **Webhook health monitoring** — detects missed webhooks by reconciling against the Figma comments API. See [Webhook health monitoring](docs/docker.md#webhook-health-monitoring).
+- **OpenTelemetry metrics** — export audit duration, queue depth, and webhook reliability metrics to any OTel-compatible collector. See [OpenTelemetry metrics](docs/docker.md#opentelemetry-metrics).
+- **Live queue-position updates** — when audits queue behind others, ack messages update with their position as the queue drains
+- **Per-provider rate limiting** — configurable RPM caps for Gemini and Anthropic prevent 429 errors at the source
 - **Progressive image fallback** — screenshot attempts PNG@1x → PNG@0.5x → JPG@1x → JPG@0.5x → JPG@0.25x to stay under the 5 MB API limit
-- **429 retry handling** — both Gemini and Anthropic rate-limit errors are caught and retried once after the suggested delay
 - **Domain-driven package structure** — business logic (`processor.py`, `skills.py`) separated from provider implementations (`providers/figma.py`, `providers/ai/`)
 - **Concurrent webhook workers** — `ThreadPoolExecutor` replaces thread-per-request; configurable via `FIGWATCH_WORKERS`
 
@@ -199,6 +211,8 @@ figwatch/skills/             bundled skill definitions (.md) + reference files
 
 ## Development
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
+
 ### Prerequisites
 
 - Python 3.11
@@ -214,10 +228,16 @@ make clean     # remove build artefacts
 
 ### Docker / server
 
-Copy `.env.example` to `.env`, fill in your values, then run:
+```bash
+cp .env.example .env   # fill in your values
+docker compose up -d --build
+```
+
+### Tests
 
 ```bash
-docker compose up -d --build
+pip install -e ".[dev]"
+pytest
 ```
 
 ## License

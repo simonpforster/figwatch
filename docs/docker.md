@@ -131,29 +131,60 @@ Within seconds you should see the audit appear as a reply in the same thread.
 
 ## Environment variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `FIGMA_PAT` | Yes | — | Figma Personal Access Token |
-| `FIGWATCH_WEBHOOK_PASSCODE` | Yes | — | Secret passphrase set when registering the webhook |
-| `GOOGLE_API_KEY` | One of these | — | Google AI API key — used when `FIGWATCH_MODEL` starts with `gemini` |
-| `ANTHROPIC_API_KEY` | One of these | — | Anthropic API key — used when `FIGWATCH_MODEL` is `sonnet`, `opus`, or `haiku` |
-| `FIGWATCH_MODEL` | No | `gemini-flash` | Model: `gemini-flash`, `gemini-flash-lite` (Gemini) or `sonnet`, `opus`, `haiku` (Claude) |
-| `FIGWATCH_FILES` | No | — | Comma-separated Figma file URLs or keys. If unset, handles comments from all team files |
-| `FIGWATCH_LOCALE` | No | `uk` | Locale for tone audits: `uk`, `de`, `fr`, `nl`, `benelux` |
-| `FIGWATCH_PORT` | No | `8080` | Port to listen on |
-| `FIGWATCH_WORKERS` | No | `4` | Number of concurrent skill executions |
-| `FIGWATCH_MAX_ATTEMPTS` | No | `3` | Retry attempts per audit before giving up (backoff: 30s, 2m, 5m) |
-| `FIGWATCH_GEMINI_RPM` | No | `15` | Gemini requests-per-minute cap. Workers block locally when the limit is reached rather than hitting 429s. Set to `0` to disable. |
-| `FIGWATCH_ANTHROPIC_RPM` | No | `5` | Anthropic requests-per-minute cap. Set to `0` to disable. |
-| `FIGWATCH_QUEUE_UPDATE_RPM` | No | `5` | Live queue-position ack updates per minute. When audits stack up behind others, a background worker refreshes their "N ahead of you" ack messages as the queue drains. Capped well below Figma's write budget so core audit replies always have headroom. Set to `0` to disable — acks then stay at their initial position until picked up. |
-| `FIGWATCH_LOG_LEVEL` | No | `INFO` | `DEBUG`, `INFO`, `WARNING`, or `ERROR`. `DEBUG` shows ack lifecycle, Figma API calls, rate limiter acquires. |
-| `FIGWATCH_LOG_FORMAT` | No | `text` | `text` for human-readable output (Dozzle-friendly, ANSI colors in TTY), or `json` for one JSON object per line (for log aggregators like Loki, Datadog). |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | — | OpenTelemetry collector endpoint (e.g. `http://otel-collector:4317`). Enables metrics export. |
-| `FIGWATCH_TEAM_ID` | No | — | Figma team ID. Enables webhook health monitoring — detects missed webhooks by reconciling against the Figma comments API. |
-| `FIGWATCH_MONITOR_TICK` | No | `60` | Seconds between checking the next file in the monitoring rotation. |
-| `FIGWATCH_MONITOR_GRACE` | No | `60` | Seconds to wait before flagging a comment as a missed webhook (gives the webhook time to arrive). |
-| `FIGWATCH_MONITOR_FILE_REFRESH` | No | `3600` | Seconds between re-enumerating team files for monitoring. |
-| `FIGWATCH_MONITOR_RPM` | No | `5` | Figma API requests-per-minute budget for the webhook monitor. Kept low so monitoring doesn't compete with audit operations. |
+All variables are documented in [`.env.example`](../.env.example) with sensible defaults. The tables below group them by function.
+
+### Required
+
+| Variable | Description |
+|----------|-------------|
+| `FIGMA_PAT` | Figma Personal Access Token |
+| `FIGWATCH_WEBHOOK_PASSCODE` | Secret passphrase set when registering the webhook |
+| `GOOGLE_API_KEY` | Google AI API key — required when `FIGWATCH_MODEL` starts with `gemini` |
+| `ANTHROPIC_API_KEY` | Anthropic API key — required when `FIGWATCH_MODEL` is `sonnet`, `opus`, or `haiku` |
+
+> You need at least one AI provider key. Both can be set — the one used depends on `FIGWATCH_MODEL`.
+
+### Core
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FIGWATCH_MODEL` | `gemini-flash` | `gemini-flash`, `gemini-flash-lite`, `sonnet`, `opus`, or `haiku` |
+| `FIGWATCH_FILES` | — | Comma-separated Figma file URLs or keys. Unset = all team files |
+| `FIGWATCH_LOCALE` | `uk` | Locale for tone audits: `uk`, `de`, `fr`, `nl`, `benelux` |
+| `FIGWATCH_PORT` | `8080` | Port to listen on |
+| `FIGWATCH_WORKERS` | `4` | Concurrent skill executions |
+| `FIGWATCH_MAX_ATTEMPTS` | `3` | Retry attempts per audit (backoff: 30s, 2m, 5m) |
+
+### Rate limiting
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FIGWATCH_GEMINI_RPM` | `15` | Gemini requests-per-minute cap. Workers block locally when the limit is reached. `0` to disable. |
+| `FIGWATCH_ANTHROPIC_RPM` | `5` | Anthropic requests-per-minute cap. `0` to disable. |
+| `FIGWATCH_QUEUE_UPDATE_RPM` | `5` | Live queue-position ack updates per minute. `0` to disable — acks stay at their initial position until picked up. |
+
+### Logging
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FIGWATCH_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, or `ERROR` |
+| `FIGWATCH_LOG_FORMAT` | `text` | `text` (human-readable, ANSI colors in TTY) or `json` (one object per line, for Loki/Datadog) |
+
+### Observability
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OpenTelemetry collector endpoint (e.g. `http://otel-collector:4317`). Metrics disabled when unset. |
+
+### Webhook health monitoring
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FIGWATCH_TEAM_ID` | — | Figma team ID. Setting this enables the webhook monitor. |
+| `FIGWATCH_MONITOR_TICK` | `60` | Seconds between checking the next file in the rotation |
+| `FIGWATCH_MONITOR_GRACE` | `60` | Seconds before flagging a comment as a missed webhook |
+| `FIGWATCH_MONITOR_FILE_REFRESH` | `3600` | Seconds between re-enumerating team files |
+| `FIGWATCH_MONITOR_RPM` | `5` | Figma API req/min budget for the monitor |
 
 ## Restricting to specific files
 
@@ -277,6 +308,16 @@ The free tier has a token-per-minute limit. FigWatch retries once after the sugg
 - Check that your endpoint is publicly reachable over HTTPS — Figma requires HTTPS
 - Verify the webhook is registered: `curl https://api.figma.com/v2/teams/YOUR_TEAM_ID/webhooks -H "X-Figma-Token: $FIGMA_PAT"`
 - The PAT used to register the webhook must belong to an account that has access to the team on a paid plan
+- If using ngrok, make sure the tunnel is still running — free ngrok URLs expire on restart
+
+**Audit takes a long time / times out**
+- Check `FIGWATCH_LOG_LEVEL=DEBUG` to see where time is spent
+- Large frames produce big screenshots — the progressive fallback may need multiple attempts
+- Gemini free tier has a tokens-per-minute limit that can cause queuing under load
+
+**Container exits immediately**
+- Check logs: `docker compose logs figwatch`
+- Most common cause: missing required env vars (`FIGMA_PAT`, `FIGWATCH_WEBHOOK_PASSCODE`, AI key)
 
 ## Managing webhooks
 
