@@ -7,6 +7,7 @@ import pytest
 from figwatch.domain import (
     DEFAULT_TRIGGERS,
     WorkItem,
+    _discover_custom_triggers,
     load_trigger_config,
     match_trigger,
 )
@@ -99,6 +100,33 @@ def test_load_trigger_config_custom_skill_subdir(tmp_path, monkeypatch):
 
     config = load_trigger_config()
     assert any(t["trigger"] == "@motion" for t in config)
+
+
+# ── FIGWATCH_SKILLS_DIR ─────────────────────────────────────────────
+
+def test_discover_custom_triggers_explicit_dir(tmp_path):
+    skills = tmp_path / "my-skills"
+    skills.mkdir()
+    (skills / "perf.md").write_text("# Perf skill")
+
+    triggers = _discover_custom_triggers(str(skills))
+    assert any(t["trigger"] == "@perf" for t in triggers)
+
+
+def test_load_trigger_config_with_skills_dir(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    skills = tmp_path / "my-skills"
+    skills.mkdir()
+    (skills / "perf.md").write_text("# Perf skill")
+
+    config = load_trigger_config(skills_dir=str(skills))
+    assert any(t["trigger"] == "@perf" for t in config)
+
+
+def test_discover_custom_triggers_explicit_dir_missing(tmp_path):
+    """Non-existent explicit dir returns empty (caller validates at startup)."""
+    triggers = _discover_custom_triggers(str(tmp_path / "nope"))
+    assert triggers == []
 
 
 # ── WorkItem ──────────────────────────────────────────────────────────
