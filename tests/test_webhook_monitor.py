@@ -46,7 +46,7 @@ class _FigmaStub:
 
 
 def _make_monitor(figma_stub, received_events=None, received_lock=None,
-                  stop_event=None, extra_file_keys=None, **env_overrides):
+                  stop_event=None, extra_file_keys=None, **kwargs):
     """Create a WebhookMonitor with stubbed Figma API."""
     received_events = received_events if received_events is not None else {}
     received_lock = received_lock or threading.Lock()
@@ -59,6 +59,7 @@ def _make_monitor(figma_stub, received_events=None, received_lock=None,
         received_events=received_events,
         received_lock=received_lock,
         stop_event=stop_event,
+        **kwargs,
     )
     # Inject stub — bypass rate limiter by replacing _api_get
     mon._api_get = lambda path: figma_stub.get(path, 'test-pat')

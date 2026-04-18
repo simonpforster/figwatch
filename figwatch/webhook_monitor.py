@@ -8,7 +8,6 @@ Rate-limited independently so monitor traffic never starves audit API calls.
 """
 
 import logging
-import os
 import threading
 import time
 import urllib.error
@@ -60,7 +59,9 @@ class WebhookMonitor:
     """
 
     def __init__(self, pat, team_id, extra_file_keys, received_events,
-                 received_lock, stop_event):
+                 received_lock, stop_event, *, tick_interval=60,
+                 grace_period=60, file_refresh_interval=3600,
+                 monitor_rpm=_DEFAULT_MONITOR_RPM):
         self._pat = pat
         self._team_id = team_id
         self._extra_file_keys = extra_file_keys or set()
@@ -68,18 +69,9 @@ class WebhookMonitor:
         self._received_lock = received_lock
         self._stop = stop_event
 
-        self._tick_interval = int(
-            os.environ.get('FIGWATCH_MONITOR_TICK', '60')
-        )
-        self._grace_period = int(
-            os.environ.get('FIGWATCH_MONITOR_GRACE', '60')
-        )
-        self._file_refresh_interval = int(
-            os.environ.get('FIGWATCH_MONITOR_FILE_REFRESH', '3600')
-        )
-        monitor_rpm = int(
-            os.environ.get('FIGWATCH_MONITOR_RPM', str(_DEFAULT_MONITOR_RPM))
-        )
+        self._tick_interval = tick_interval
+        self._grace_period = grace_period
+        self._file_refresh_interval = file_refresh_interval
 
         # Rate limiter — all monitor API calls acquire a token first.
         self._limiter = TokenBucket(
