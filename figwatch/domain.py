@@ -29,12 +29,16 @@ DEFAULT_TRIGGERS = [
 ]
 
 
-def _discover_custom_triggers():
-    """Scan ./custom-skills/ for .md files and return trigger entries.
+def _discover_custom_triggers(skills_dir=None):
+    """Scan custom-skills directory for .md files and return trigger entries.
 
     Supports flat files (a11y.md → @a11y) and subdirectories (a11y/skill.md → @a11y).
+
+    Args:
+        skills_dir: Path to the custom-skills directory. Defaults to
+                    ``os.getcwd() / 'custom-skills'`` when *None*.
     """
-    custom_dir = Path(os.getcwd()) / 'custom-skills'
+    custom_dir = Path(skills_dir) if skills_dir else Path(os.getcwd()) / 'custom-skills'
     if not custom_dir.is_dir():
         return []
 
@@ -61,16 +65,21 @@ def _discover_custom_triggers():
     return triggers
 
 
-def load_trigger_config():
+def load_trigger_config(skills_dir=None):
     """Load trigger config from config file or built-in defaults, plus any custom skills.
 
     Priority:
       1. ~/.figwatch/config.json  (written by the macOS app)
       2. Built-in defaults        (@tone, @ux)
 
-    In both cases, any .md files found in ./custom-skills/ are appended automatically.
+    In both cases, any .md files found in the custom-skills directory are appended
+    automatically.
+
+    Args:
+        skills_dir: Path to the custom-skills directory. Passed through to
+                    :func:`_discover_custom_triggers`.
     """
-    custom = _discover_custom_triggers()
+    custom = _discover_custom_triggers(skills_dir)
 
     try:
         config_path = os.path.join(os.path.expanduser('~'), '.figwatch', 'config.json')

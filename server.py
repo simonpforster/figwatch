@@ -31,6 +31,7 @@ Environment variables:
   FIGWATCH_ANTHROPIC_RPM      Requests per minute for Anthropic (default: 5; 0 disables)
   FIGWATCH_LOG_LEVEL          Log level: DEBUG, INFO, WARNING, ERROR (default: INFO)
   FIGWATCH_LOG_FORMAT         Log format: text (default) or json
+  FIGWATCH_SKILLS_DIR         Path to custom-skills directory (default: ./custom-skills)
 
   Webhook health monitoring (all optional):
   OTEL_EXPORTER_OTLP_ENDPOINT   OTel collector endpoint (metrics disabled if unset)
@@ -459,9 +460,15 @@ def main():
     queue_update_rpm = int(os.environ.get('FIGWATCH_QUEUE_UPDATE_RPM', '5'))
     claude_path = 'api'
 
+    skills_dir = os.environ.get('FIGWATCH_SKILLS_DIR', '').strip() or None
+    if skills_dir and not os.path.isdir(skills_dir):
+        logger.error('FIGWATCH_SKILLS_DIR does not exist or is not a directory',
+                      extra={'path': skills_dir})
+        sys.exit(1)
+
     init_metrics()
 
-    trigger_config = load_trigger_config()
+    trigger_config = load_trigger_config(skills_dir)
     triggers_str = ', '.join(t.get('trigger', '') for t in trigger_config)
 
     processed_ids = load_processed()
