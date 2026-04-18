@@ -83,11 +83,15 @@ class TextFormatter(logging.Formatter):
                 ctx_parts.append(f'{key}={ctx[key]}')
         ctx_str = (' '.join(ctx_parts) + ' ') if ctx_parts else ''
 
-        # Only emit known FigWatch extra= fields, ignoring third-party attrs.
+        # Any extra= fields attached directly to the record, excluding the
+        # standard LogRecord attrs and our own context dict.
         extra_parts = []
-        for key in _KNOWN_EXTRA_KEYS:
-            if key in record.__dict__ and key not in ctx:
-                extra_parts.append(f'{key}={record.__dict__[key]}')
+        for key, value in record.__dict__.items():
+            if key in _STD_RECORD_ATTRS or key == 'audit_context':
+                continue
+            if key in ctx:
+                continue
+            extra_parts.append(f'{key}={value}')
         extra_str = (' '.join(extra_parts) + ' ') if extra_parts else ''
 
         msg = record.getMessage()
@@ -118,9 +122,12 @@ class JsonFormatter(logging.Formatter):
         ctx = getattr(record, 'audit_context', {}) or {}
         payload.update(ctx)
 
-        for key in _KNOWN_EXTRA_KEYS:
-            if key in record.__dict__ and key not in payload:
-                payload[key] = record.__dict__[key]
+        for key, value in record.__dict__.items():
+            if key in _STD_RECORD_ATTRS or key == 'audit_context':
+                continue
+            if key in payload:
+                continue
+            payload[key] = value
 
         if record.exc_info:
             payload['exc'] = self.formatException(record.exc_info)
@@ -134,13 +141,6 @@ _STD_RECORD_ATTRS = frozenset({
     'module', 'exc_info', 'exc_text', 'stack_info', 'lineno', 'funcName',
     'created', 'msecs', 'relativeCreated', 'thread', 'threadName',
     'processName', 'process', 'message', 'taskName',
-})
-
-# Extra keys explicitly used by FigWatch via logger.xxx(..., extra={key: val}).
-# Only these are emitted as extras — third-party attributes are ignored.
-_KNOWN_EXTRA_KEYS = frozenset({
-    'ack_id', 'chars', 'depth', 'endpoint', 'error', 'reason',
-    'reply_to', 'skill',
 })
 
 

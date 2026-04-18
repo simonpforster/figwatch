@@ -6,10 +6,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
 WORKDIR /app
 
 COPY pyproject.toml .
-COPY figwatch/__init__.py ./figwatch/__init__.py
-RUN pip install --no-cache-dir ".[server]"
 COPY figwatch/ ./figwatch/
 COPY server.py .
+RUN pip install --no-cache-dir ".[server]"
 
 VOLUME ["/app/custom-skills"]
 
