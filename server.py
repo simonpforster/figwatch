@@ -71,6 +71,7 @@ from figwatch.metrics import (
 from figwatch.processor import (
     clean_reply, delete_ack, post_ack, post_reply, update_ack,
 )
+from figwatch.providers.ai import CLAUDE_API_MODELS, GEMINI_MODELS
 from figwatch.providers.figma import figma_get_retry
 from figwatch.queue_stats import InstrumentedQueue, QueuedItem
 from figwatch.skills import execute_skill
@@ -452,13 +453,81 @@ def main():
     files_str = os.environ.get('FIGWATCH_FILES', '').strip()
     allowed_file_keys = _parse_file_keys(files_str) if files_str else set()
 
-    locale = os.environ.get('FIGWATCH_LOCALE', 'uk')
     model = os.environ.get('FIGWATCH_MODEL', 'gemini-flash')
+    valid_models = {*GEMINI_MODELS, *CLAUDE_API_MODELS}
+    if model not in valid_models:
+        logger.error('invalid FIGWATCH_MODEL',
+                     extra={'value': model, 'valid': sorted(valid_models)})
+        sys.exit(1)
+
+    valid_locales = {'uk', 'de', 'fr', 'nl', 'benelux'}
+    locale = os.environ.get('FIGWATCH_LOCALE', 'uk')
+    if locale not in valid_locales:
+        logger.error('invalid FIGWATCH_LOCALE',
+                     extra={'value': locale, 'valid': sorted(valid_locales)})
+        sys.exit(1)
+
     port = int(os.environ.get('FIGWATCH_PORT', '8080'))
+    if port < 1 or port > 65535:
+        logger.error('invalid FIGWATCH_PORT',
+                     extra={'value': port, 'min': 1, 'max': 65535})
+        sys.exit(1)
+
     worker_count = int(os.environ.get('FIGWATCH_WORKERS', '4'))
-    max_attempts = max(1, int(os.environ.get('FIGWATCH_MAX_ATTEMPTS', '3')))
+    if worker_count < 1:
+        logger.error('invalid FIGWATCH_WORKERS',
+                     extra={'value': worker_count, 'min': 1})
+        sys.exit(1)
+
+    max_attempts = int(os.environ.get('FIGWATCH_MAX_ATTEMPTS', '3'))
+    if max_attempts < 1:
+        logger.error('invalid FIGWATCH_MAX_ATTEMPTS',
+                     extra={'value': max_attempts, 'min': 1})
+        sys.exit(1)
+
     queue_update_rpm = int(os.environ.get('FIGWATCH_QUEUE_UPDATE_RPM', '5'))
+    if queue_update_rpm < 1:
+        logger.error('invalid FIGWATCH_QUEUE_UPDATE_RPM',
+                     extra={'value': queue_update_rpm, 'min': 1})
+        sys.exit(1)
+
     claude_path = 'api'
+
+    gemini_rpm = int(os.environ.get('FIGWATCH_GEMINI_RPM', '15'))
+    if gemini_rpm < 0:
+        logger.error('invalid FIGWATCH_GEMINI_RPM',
+                     extra={'value': gemini_rpm, 'min': 0})
+        sys.exit(1)
+
+    anthropic_rpm = int(os.environ.get('FIGWATCH_ANTHROPIC_RPM', '5'))
+    if anthropic_rpm < 0:
+        logger.error('invalid FIGWATCH_ANTHROPIC_RPM',
+                     extra={'value': anthropic_rpm, 'min': 0})
+        sys.exit(1)
+
+    monitor_tick = int(os.environ.get('FIGWATCH_MONITOR_TICK', '60'))
+    if monitor_tick < 1:
+        logger.error('invalid FIGWATCH_MONITOR_TICK',
+                     extra={'value': monitor_tick, 'min': 1})
+        sys.exit(1)
+
+    monitor_grace = int(os.environ.get('FIGWATCH_MONITOR_GRACE', '60'))
+    if monitor_grace < 1:
+        logger.error('invalid FIGWATCH_MONITOR_GRACE',
+                     extra={'value': monitor_grace, 'min': 1})
+        sys.exit(1)
+
+    monitor_file_refresh = int(os.environ.get('FIGWATCH_MONITOR_FILE_REFRESH', '3600'))
+    if monitor_file_refresh < 1:
+        logger.error('invalid FIGWATCH_MONITOR_FILE_REFRESH',
+                     extra={'value': monitor_file_refresh, 'min': 1})
+        sys.exit(1)
+
+    monitor_rpm = int(os.environ.get('FIGWATCH_MONITOR_RPM', '5'))
+    if monitor_rpm < 1:
+        logger.error('invalid FIGWATCH_MONITOR_RPM',
+                     extra={'value': monitor_rpm, 'min': 1})
+        sys.exit(1)
 
     skills_dir = os.environ.get('FIGWATCH_SKILLS_DIR', '').strip() or None
     if skills_dir and not os.path.isdir(skills_dir):
@@ -521,6 +590,10 @@ def main():
             received_events=received_events,
             received_lock=received_lock,
             stop_event=stop_event,
+            tick_interval=monitor_tick,
+            grace_period=monitor_grace,
+            file_refresh_interval=monitor_file_refresh,
+            monitor_rpm=monitor_rpm,
         )
         monitor.start()
     else:
