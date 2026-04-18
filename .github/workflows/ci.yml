@@ -111,7 +111,7 @@ jobs:
     # check-version is skipped on PRs; allow publish to proceed when its
     # needed jobs either succeeded or were intentionally skipped.
     if: |
-      always() &&
+      !cancelled() &&
       needs.test.result == 'success' &&
       needs.docker.result == 'success' &&
       (needs.check-version.result == 'success' || needs.check-version.result == 'skipped')
