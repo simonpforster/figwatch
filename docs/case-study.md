@@ -67,22 +67,52 @@
 
 ## 04 · The Solution / 解决方案
 
-**EN —** One domain core, two front doors.
+**EN —** One domain core, two products for two very different buyers.
 
-- **macOS menu bar app** — zero-friction install for individual designers and small teams. Polls the files they care about, runs audits locally via Claude Code.
-- **Docker server** — for design ops. Receives Figma webhooks (no polling), scales with a worker pool, emits OpenTelemetry metrics.
+**中 —** 一个领域内核，面向两种截然不同的用户，做成两个产品。
 
-Both paths share the same pipeline: **detect trigger → introspect skill → fetch only what's needed → run AI audit → reply inline.**
+### 4.1 Two products, one brain / 两个产品，同一个大脑
 
-**中 —** 一个领域内核，两个入口。
+**EN —** Early prototypes tried to serve everyone with a single binary. It failed both ways — too much setup for a solo designer, too little control for a design ops team. We split the delivery, kept the logic:
 
-- **macOS 菜单栏应用**——面向个人与小团队，零门槛安装。轮询关心的文件，通过 Claude Code 本地执行审查。
-- **Docker 服务端**——面向设计运营。基于 Figma Webhook（无轮询），通过 worker 池横向扩展，输出 OpenTelemetry 指标。
+- **FigWatch Desktop** — a macOS menu bar app. Installed by **the designer themselves** in under 2 minutes. Uses the designer's existing Claude Code login (no API key to paste), polls the files they personally care about, replies from their own account. Fully local; nothing leaves the laptop except Figma and AI API calls.
+- **FigWatch Server** — a Docker image deployed by **design ops / platform teams**. Serves a whole org. Receives Figma webhooks (no polling lag), runs a worker pool for concurrent audits, uses a shared service account, exposes an admin dashboard (§7.3), emits OpenTelemetry metrics to the team's existing observability stack.
 
-两条路径共享同一条流水线：**触发词识别 → 技能自省 → 按需抓取资产 → AI 审查 → 回帖。**
+Both call the **same Python core** (`figwatch/` package): same trigger detection, same skill loader, same AI provider abstraction, same reply composer. A skill written by design ops runs bit-for-bit identically on a designer's laptop.
 
-![Solution architecture — two entry points, one core](placeholder://solution-architecture.png)
-*Placeholder: 架构图——两个入口共享同一内核*
+**中 —** 早期原型想用一个二进制文件服务所有人——结果两头都做不好：个人设计师嫌部署太重，设计运营又嫌控制太少。我们拆分了产品形态，但保留了同一套逻辑：
+
+- **FigWatch Desktop**——macOS 菜单栏应用。由**设计师本人**在 2 分钟内完成安装，复用他已登录的 Claude Code（无需粘贴 API Key），轮询他个人关心的文件，以他自己的账号回帖。完全本地运行，除了 Figma 和 AI API 调用外，不向外发送任何数据。
+- **FigWatch Server**——由**设计运营 / 平台团队**部署的 Docker 镜像，服务整个组织。基于 Figma Webhook（零轮询延迟），通过 worker 池并发处理，使用共享服务账号，提供管理后台（见 7.3），输出 OpenTelemetry 指标到团队既有的观测体系。
+
+两者调用**同一套 Python 内核**（`figwatch/` 包）：相同的触发词识别、技能加载器、AI Provider 抽象、回复组装器。设计运营写的一个技能，在设计师笔记本上运行时，行为字节级一致。
+
+![Architecture — shared core, two deployment shells](placeholder://architecture-shared-core.png)
+*Placeholder: 架构图——共享内核 + 两层部署外壳*
+
+### 4.2 Which one do I install? / 我该装哪个？
+
+| | **FigWatch Desktop** | **FigWatch Server** |
+|---|---|---|
+| **Who installs / 谁来装** | The designer / 设计师本人 | Design ops / platform team / 设计运营 · 平台团队 |
+| **Who it serves / 服务对象** | 1 designer or a handful of files / 1 人或少量文件 | Whole org, all files under the workspace / 全组织、整个 workspace |
+| **How it hears about comments / 如何感知评论** | Polls Figma every N seconds / 每 N 秒轮询一次 | Figma webhook (push, real-time) / Figma Webhook（推送、实时） |
+| **AI credentials / AI 凭证** | Designer's own Claude Code login / 设计师自己的 Claude Code 登录 | Shared service key, rate-limited per provider / 团队共享的服务 Key，按 Provider 限流 |
+| **Identity of replies / 回帖身份** | Posted as the designer / 以该设计师身份回帖 | Posted as a team bot account / 以团队机器人账号回帖 |
+| **Concurrency / 并发** | Serial, 1 audit at a time / 串行，每次 1 个 | Worker pool, 1–N parallel audits / worker 池，1–N 并发 |
+| **Observability / 可观测性** | In-app status pill / 应用内状态条 | OpenTelemetry → team's Grafana etc. / OpenTelemetry → 团队 Grafana 等 |
+| **Admin dashboard / 管理后台** | — | Skill usage · performance · cost / 技能使用 · 性能 · 成本 |
+| **Setup time / 部署时间** | ~2 min / 约 2 分钟 | ~30 min (one-time, by ops) / 约 30 分钟（一次性，由运营完成） |
+| **Feels like / 体感** | A personal assistant / 一个私人助理 | Design infrastructure / 一块设计基础设施 |
+
+### 4.3 They coexist on purpose / 两者刻意共存
+
+**EN —** Desktop and Server are not alternatives — most teams end up running both. A common pattern: design ops deploys the Server for org-wide coverage (every file, every comment, canonical reply bot), **and** individual designers install Desktop on top to audit *drafts that aren't in the shared workspace yet* using their personal Claude Code quota. Because the skill files are portable `.md`, a designer can prototype a new `@i18n` skill locally, and when it's mature, design ops promotes the same file to the Server for everyone.
+
+**中 —** Desktop 与 Server 不是二选一——大多数团队最终两个都在跑。典型用法：设计运营部署 Server 覆盖全组织（所有文件、所有评论、统一机器人身份回帖），**同时**设计师各自安装 Desktop，用自己的 Claude Code 配额审查*还没进共享 workspace 的草稿*。因为技能是可移植的 `.md` 文件，设计师可以本地原型一个新的 `@i18n` 技能，成熟后由设计运营把同一份文件提升到 Server 给全员使用。
+
+![Adoption path — personal → promoted to org](placeholder://adoption-path.png)
+*Placeholder: 采用路径——个人原型 → 运营提升为全组织能力*
 
 ---
 
