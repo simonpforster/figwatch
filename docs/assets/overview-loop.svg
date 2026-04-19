@@ -10,107 +10,106 @@
   </defs>
   <rect width="1200" height="700" fill="#FAFAFA"/>
 
-  <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">Where the loop happens · 闭环在哪里</text>
-  <text x="60" y="86" font-size="14" fill="#6B6B6B">No dashboard, no Slack, no pasted screenshot — the whole loop stays inside one Figma thread.</text>
+  <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">Zero context switch · 零上下文切换</text>
+  <text x="60" y="86" font-size="14" fill="#6B6B6B">The review loop collapses from many tools into one surface.</text>
 
-  <!-- ===== LEFT: "Before" — scattered tools ===== -->
+  <!-- ===== LEFT: Before ===== -->
   <g>
-    <text x="110" y="156" font-size="12" font-weight="600" fill="#8A8A8A" letter-spacing="1">BEFORE · 之前</text>
-    <text x="110" y="176" font-size="11" fill="#8A8A8A">review = tool-hopping · 审查 = 工具乱跳</text>
+    <text x="110" y="156" font-size="12" font-weight="600" fill="#8A8A8A" letter-spacing="1.5">BEFORE · 之前</text>
+    <text x="110" y="176" font-size="11" fill="#8A8A8A">the review scatters across 4–5 surfaces</text>
+    <text x="110" y="192" font-size="11" fill="#8A8A8A">审查分散在 4–5 个工具之间</text>
 
     <!-- center: designer -->
-    <circle cx="270" cy="400" r="34" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1.2"/>
-    <text x="270" y="395" text-anchor="middle" font-size="11" fill="#6B6B6B">designer</text>
-    <text x="270" y="411" text-anchor="middle" font-size="11" fill="#6B6B6B">设计师</text>
+    <circle cx="290" cy="420" r="38" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+    <text x="290" y="415" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">designer</text>
+    <text x="290" y="431" text-anchor="middle" font-size="11" fill="#6B6B6B">设计师</text>
 
     <!-- scattered tools -->
-    <g font-size="11" fill="#8A8A8A">
-      <rect x="90" y="220" width="110" height="42" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
-      <text x="145" y="240" text-anchor="middle" font-size="11" fill="#6B6B6B">Figma</text>
-      <text x="145" y="254" text-anchor="middle" font-size="10">design file</text>
+    <g>
+      <rect x="110" y="240" width="120" height="44" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="170" y="266" text-anchor="middle" font-size="11" fill="#6B6B6B">Figma</text>
 
-      <rect x="320" y="220" width="110" height="42" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
-      <text x="375" y="240" text-anchor="middle" font-size="11" fill="#6B6B6B">Tone of Voice</text>
-      <text x="375" y="254" text-anchor="middle" font-size="10">Notion doc</text>
+      <rect x="350" y="240" width="120" height="44" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="410" y="266" text-anchor="middle" font-size="11" fill="#6B6B6B">Tone of Voice doc</text>
 
-      <rect x="90" y="540" width="110" height="42" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
-      <text x="145" y="560" text-anchor="middle" font-size="11" fill="#6B6B6B">ChatGPT</text>
-      <text x="145" y="574" text-anchor="middle" font-size="10">paste screenshot</text>
+      <rect x="470" y="400" width="120" height="44" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="530" y="426" text-anchor="middle" font-size="11" fill="#6B6B6B">Heuristics PDF</text>
 
-      <rect x="320" y="540" width="110" height="42" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
-      <text x="375" y="560" text-anchor="middle" font-size="11" fill="#6B6B6B">Slack</text>
-      <text x="375" y="574" text-anchor="middle" font-size="10">write feedback</text>
+      <rect x="110" y="560" width="120" height="44" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="170" y="586" text-anchor="middle" font-size="11" fill="#6B6B6B">ChatGPT</text>
 
-      <rect x="420" y="380" width="110" height="42" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
-      <text x="475" y="400" text-anchor="middle" font-size="11" fill="#6B6B6B">Heuristics</text>
-      <text x="475" y="414" text-anchor="middle" font-size="10">PDF</text>
+      <rect x="350" y="560" width="120" height="44" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="410" y="586" text-anchor="middle" font-size="11" fill="#6B6B6B">Slack</text>
     </g>
 
-    <!-- tangled arrows -->
+    <!-- tangled arrows out + back -->
     <g stroke="#B0B0B0" stroke-width="1" fill="none" marker-end="url(#arrMuted)">
-      <path d="M 240 370 C 200 320, 160 280, 145 262"/>
-      <path d="M 300 370 C 340 320, 370 280, 370 262"/>
-      <path d="M 240 430 C 200 480, 160 520, 145 540"/>
-      <path d="M 300 430 C 340 480, 370 520, 370 540"/>
-      <path d="M 304 400 L 420 400"/>
+      <path d="M 258 392 C 210 330, 180 290, 170 284"/>
+      <path d="M 322 392 C 370 330, 400 290, 410 284"/>
+      <path d="M 328 420 L 470 420"/>
+      <path d="M 258 448 C 210 500, 180 540, 170 560"/>
+      <path d="M 322 448 C 370 500, 400 540, 410 560"/>
     </g>
     <g stroke="#B0B0B0" stroke-width="1" fill="none" marker-end="url(#arrMuted)">
-      <path d="M 145 262 C 200 330, 240 360, 236 370"/>
-      <path d="M 370 262 C 330 330, 300 360, 304 370"/>
+      <path d="M 170 284 C 200 350, 240 390, 256 400"/>
+      <path d="M 410 284 C 380 350, 340 390, 324 400"/>
+      <path d="M 470 420 L 336 420"/>
+      <path d="M 170 560 C 200 500, 240 460, 256 444"/>
+      <path d="M 410 560 C 380 500, 340 460, 324 444"/>
     </g>
 
-    <text x="310" y="640" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">30–120s per frame, context lost each hop.</text>
-    <text x="310" y="656" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">每帧 30–120 秒，每跳一次工具上下文就丢一次。</text>
+    <text x="310" y="650" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">30–120 s / frame · context lost each hop</text>
   </g>
 
   <!-- divider -->
-  <line x1="600" y1="160" x2="600" y2="660" stroke="#EAEAEA" stroke-dasharray="4 4"/>
+  <line x1="600" y1="200" x2="600" y2="620" stroke="#EAEAEA" stroke-dasharray="4 4"/>
 
-  <!-- ===== RIGHT: "After" — closed loop inside Figma ===== -->
+  <!-- ===== RIGHT: After ===== -->
   <g>
-    <text x="650" y="156" font-size="12" font-weight="600" fill="#1F1F1F" letter-spacing="1">AFTER · 之后</text>
-    <text x="650" y="176" font-size="11" fill="#6B6B6B">one thread, in and out · 一条线程 · 一进一出</text>
+    <text x="650" y="156" font-size="12" font-weight="600" fill="#1F1F1F" letter-spacing="1.5">AFTER · 之后</text>
+    <text x="650" y="176" font-size="11" fill="#6B6B6B">the review collapses into one surface</text>
+    <text x="650" y="192" font-size="11" fill="#6B6B6B">审查坍缩到一个界面里</text>
 
-    <!-- Figma boundary -->
-    <rect x="640" y="200" width="500" height="420" rx="14" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1.5"/>
-    <text x="664" y="228" font-size="11" font-weight="600" fill="#1F1F1F" letter-spacing="1">FIGMA · COMMENT THREAD</text>
-    <text x="1120" y="228" text-anchor="end" font-size="11" fill="#8A8A8A">Frame 12 · Empty state</text>
+    <!-- designer -->
+    <circle cx="760" cy="420" r="38" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+    <text x="760" y="415" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">designer</text>
+    <text x="760" y="431" text-anchor="middle" font-size="11" fill="#6B6B6B">设计师</text>
 
-    <!-- comment in -->
-    <g>
-      <rect x="670" y="260" width="360" height="96" rx="12" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.2"/>
-      <circle cx="696" cy="292" r="12" fill="#D6E3F5" stroke="#1F1F1F" stroke-width="1"/>
-      <text x="696" y="296" text-anchor="middle" font-size="10" font-weight="600" fill="#1F1F1F">A</text>
-      <text x="720" y="289" font-size="12" font-weight="600" fill="#1F1F1F">Alex · designer</text>
-      <text x="720" y="304" font-size="10" fill="#8A8A8A">just now</text>
-      <text x="690" y="334" font-size="12" fill="#1F1F1F">@ux focus on the empty state</text>
+    <!-- single surface -->
+    <rect x="900" y="336" width="220" height="172" rx="12" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="2"/>
+    <text x="1010" y="370" text-anchor="middle" font-size="13" font-weight="600" fill="#1F1F1F">Figma</text>
+    <text x="1010" y="390" text-anchor="middle" font-size="11" fill="#6B6B6B">the comment thread</text>
+    <text x="1010" y="408" text-anchor="middle" font-size="11" fill="#6B6B6B">一条评论线程</text>
+    <!-- small badge: FigWatch lives here -->
+    <rect x="925" y="430" width="170" height="26" rx="13" fill="#1F1F1F"/>
+    <text x="1010" y="447" text-anchor="middle" font-size="11" fill="#FFFFFF">FigWatch lives here</text>
+    <text x="1010" y="478" text-anchor="middle" font-size="10" fill="#8A8A8A">FigWatch 就在这里</text>
+
+    <!-- tight loop arrows -->
+    <path d="M 798 408 C 850 388, 880 376, 900 376" fill="none" stroke="#1F1F1F" stroke-width="1.8" marker-end="url(#arr)"/>
+    <path d="M 900 464 C 880 464, 850 452, 798 432" fill="none" stroke="#1F1F1F" stroke-width="1.8" marker-end="url(#arr)"/>
+    <text x="849" y="362" font-size="11" fill="#1F1F1F" font-style="italic">trigger</text>
+    <text x="849" y="490" font-size="11" fill="#1F1F1F" font-style="italic">reply</text>
+
+    <!-- crossed-out secondary tools (faint) -->
+    <g opacity="0.35">
+      <rect x="650" y="260" width="90" height="32" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="695" y="280" text-anchor="middle" font-size="10" fill="#6B6B6B">Notion</text>
+      <line x1="650" y1="260" x2="740" y2="292" stroke="#B0B0B0" stroke-width="1"/>
+
+      <rect x="760" y="260" width="90" height="32" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="805" y="280" text-anchor="middle" font-size="10" fill="#6B6B6B">Slack</text>
+      <line x1="760" y1="260" x2="850" y2="292" stroke="#B0B0B0" stroke-width="1"/>
+
+      <rect x="650" y="558" width="90" height="32" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="695" y="578" text-anchor="middle" font-size="10" fill="#6B6B6B">ChatGPT</text>
+      <line x1="650" y1="558" x2="740" y2="590" stroke="#B0B0B0" stroke-width="1"/>
+
+      <rect x="760" y="558" width="90" height="32" rx="6" fill="#FFFFFF" stroke="#B0B0B0" stroke-width="1"/>
+      <text x="805" y="578" text-anchor="middle" font-size="10" fill="#6B6B6B">PDF</text>
+      <line x1="760" y1="558" x2="850" y2="590" stroke="#B0B0B0" stroke-width="1"/>
     </g>
 
-    <!-- down arrow -->
-    <line x1="850" y1="366" x2="850" y2="406" stroke="#1F1F1F" stroke-width="1.5" marker-end="url(#arr)"/>
-    <text x="860" y="391" font-size="10" fill="#6B6B6B" font-style="italic">~15 s</text>
-
-    <!-- reply out -->
-    <g>
-      <rect x="670" y="416" width="460" height="180" rx="12" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
-      <circle cx="696" cy="448" r="12" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1"/>
-      <text x="696" y="452" text-anchor="middle" font-size="9" font-weight="600" fill="#1F1F1F">FW</text>
-      <text x="720" y="445" font-size="12" font-weight="600" fill="#1F1F1F">FigWatch · reply</text>
-      <text x="720" y="460" font-size="10" fill="#8A8A8A">edited · 14s</text>
-
-      <text x="690" y="492" font-size="12" font-weight="600" fill="#1F1F1F">UX audit · empty state</text>
-      <circle cx="696" cy="514" r="4" fill="#C0392B"/>
-      <text x="708" y="518" font-size="11" fill="#1F1F1F">Missing primary CTA</text>
-      <circle cx="696" cy="534" r="4" fill="#E6B422"/>
-      <text x="708" y="538" font-size="11" fill="#1F1F1F">Illustration competes with copy</text>
-      <circle cx="696" cy="554" r="4" fill="#2E8540"/>
-      <text x="708" y="558" font-size="11" fill="#1F1F1F">Nit: tighten line-height</text>
-
-      <rect x="690" y="572" width="80" height="18" rx="3" fill="#1F1F1F"/>
-      <text x="730" y="585" text-anchor="middle" font-size="10" fill="#FFFFFF">3 findings</text>
-    </g>
+    <text x="880" y="650" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">~ 15 s / frame · nothing else opened · 不打开任何其它工具</text>
   </g>
-
-  <text x="890" y="646" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">One thread. In: a trigger. Out: a structured reply. Nothing else opened.</text>
-  <text x="890" y="662" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">一条线程 · 进去一个触发词 · 出来一条结构化回复 · 不打开任何其它工具。</text>
 </svg>
