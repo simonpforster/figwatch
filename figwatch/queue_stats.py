@@ -11,14 +11,14 @@ from typing import Any, List, Optional
 
 @dataclass
 class QueuedItem:
-    """Wrapper around a WorkItem tracking queue/processing metadata.
+    """Wraps an Audit with queue/processing metadata.
 
     `ack_id` is mutable: the AckUpdater posts a new ack and writes the new
     ID back onto this object while the item is still in the queue. Workers
     only read ack_id after get() returns the item, at which point the
     updater is guaranteed to have stopped touching it (via cancel()).
     """
-    item: Any
+    audit: Any
     ack_id: Optional[str]
     audit_id: str
     enqueued_at: float = field(default_factory=time.monotonic)
