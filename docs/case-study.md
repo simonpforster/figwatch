@@ -90,29 +90,26 @@ Both call the **same Python core** (`figwatch/` package): same trigger detection
 ![Architecture — shared core, two deployment shells](placeholder://architecture-shared-core.png)
 *Placeholder: 架构图——共享内核 + 两层部署外壳*
 
-### 4.2 Which one do I install? / 我该装哪个？
+### 4.2 Not alternatives — they coexist / 不是二选一，而是共存
 
-| | **FigWatch Desktop** | **FigWatch Server** |
+**EN —** Desktop and Server serve different buyers but most teams run both: ops deploys the Server for org-wide coverage and canonical replies; designers install Desktop on top to audit drafts not yet in the shared workspace, using their own Claude Code quota. Skills are portable `.md` — prototype locally, promote to Server when mature.
+
+**中 —** Desktop 与 Server 面向不同买家，但团队往往两个都跑：设计运营部署 Server 覆盖全组织、统一回帖；设计师各自装 Desktop 用自己的 Claude Code 配额审查尚未进共享 workspace 的草稿。技能是可移植的 `.md` 文件，个人本地原型，成熟后由运营提升到 Server 全员可用。
+
+| | **Desktop** | **Server** |
 |---|---|---|
-| **Who installs / 谁来装** | The designer / 设计师本人 | Design ops / platform team / 设计运营 · 平台团队 |
-| **Who it serves / 服务对象** | 1 designer or a handful of files / 1 人或少量文件 | Whole org, all files under the workspace / 全组织、整个 workspace |
-| **How it hears about comments / 如何感知评论** | Polls Figma every N seconds / 每 N 秒轮询一次 | Figma webhook (push, real-time) / Figma Webhook（推送、实时） |
-| **AI credentials / AI 凭证** | Designer's own Claude Code login / 设计师自己的 Claude Code 登录 | Shared service key, rate-limited per provider / 团队共享的服务 Key，按 Provider 限流 |
-| **Identity of replies / 回帖身份** | Posted as the designer / 以该设计师身份回帖 | Posted as a team bot account / 以团队机器人账号回帖 |
-| **Concurrency / 并发** | Serial, 1 audit at a time / 串行，每次 1 个 | Worker pool, 1–N parallel audits / worker 池，1–N 并发 |
-| **Observability / 可观测性** | In-app status pill / 应用内状态条 | OpenTelemetry → team's Grafana etc. / OpenTelemetry → 团队 Grafana 等 |
-| **Admin dashboard / 管理后台** | — | Skill usage · performance · cost / 技能使用 · 性能 · 成本 |
-| **Setup time / 部署时间** | ~2 min / 约 2 分钟 | ~30 min (one-time, by ops) / 约 30 分钟（一次性，由运营完成） |
-| **Feels like / 体感** | A personal assistant / 一个私人助理 | Design infrastructure / 一块设计基础设施 |
+| **Installs / 谁装** | Designer / 设计师 | Design ops / 设计运营 |
+| **Scope / 覆盖** | Their files / 个人文件 | Whole org / 全组织 |
+| **Trigger / 触发** | Poll / 轮询 | Webhook / 推送 |
+| **AI creds / AI 凭证** | Own Claude Code login / 自己的 Claude Code 登录 | Shared service key / 共享服务 Key |
+| **Replies as / 回帖身份** | The designer / 本人 | Team bot / 机器人 |
+| **Concurrency / 并发** | Serial / 串行 | Worker pool / worker 池 |
+| **Admin dashboard / 管理后台** | — | ✓ (§7.3) |
+| **Setup / 部署** | ~2 min / 约 2 分钟 | ~30 min / 约 30 分钟 |
+| **Feels like / 定位** | Personal assistant / 私人助理 | Design infrastructure / 设计基础设施 |
 
-### 4.3 They coexist on purpose / 两者刻意共存
-
-**EN —** Desktop and Server are not alternatives — most teams end up running both. A common pattern: design ops deploys the Server for org-wide coverage (every file, every comment, canonical reply bot), **and** individual designers install Desktop on top to audit *drafts that aren't in the shared workspace yet* using their personal Claude Code quota. Because the skill files are portable `.md`, a designer can prototype a new `@i18n` skill locally, and when it's mature, design ops promotes the same file to the Server for everyone.
-
-**中 —** Desktop 与 Server 不是二选一——大多数团队最终两个都在跑。典型用法：设计运营部署 Server 覆盖全组织（所有文件、所有评论、统一机器人身份回帖），**同时**设计师各自安装 Desktop，用自己的 Claude Code 配额审查*还没进共享 workspace 的草稿*。因为技能是可移植的 `.md` 文件，设计师可以本地原型一个新的 `@i18n` 技能，成熟后由设计运营把同一份文件提升到 Server 给全员使用。
-
-![Adoption path — personal → promoted to org](placeholder://adoption-path.png)
-*Placeholder: 采用路径——个人原型 → 运营提升为全组织能力*
+![Adoption path — Desktop prototype → Server promotion](placeholder://adoption-path.png)
+*Placeholder: 采用路径——Desktop 原型 → 提升为 Server 全组织能力*
 
 ---
 
