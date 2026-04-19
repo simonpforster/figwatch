@@ -29,16 +29,20 @@
 
 ## 02 · The Problem / 问题背景
 
-**EN —** Design teams already own the playbooks — Tone of Voice guidelines, Nielsen heuristics, accessibility checklists — but applying them is manual. Every frame review takes 30–120 seconds of context switching: open the doc, scan the rules, eyeball the design, write feedback. Multiply by dozens of files and the audit backlog becomes a bottleneck no one wants to own.
+**EN —** Designers already use AI for design review. The workflow is familiar: screenshot the frame → switch to ChatGPT → type out the context ("this is an empty state, our tone is playful, ignore the copy for now, focus only on the CTA") → read the reply → switch back to Figma → paste the feedback into a comment. The audit itself isn't the hard part — the **ceremony** around it is. Every frame demands the same app hop, the same re-typed context, the same copy-paste round-trip. On a busy day that overhead eats more minutes than the reviews themselves, and the context gets thinner every time someone is in a hurry.
 
-**中 —** 设计团队从不缺规范——Tone of Voice、尼尔森十大可用性原则、无障碍清单——但落地全靠手动。每个画板的检查要 30–120 秒的切换成本：打开文档、回忆规则、肉眼比对、手写反馈。乘以几十个文件，审查积压就变成没人想接的瓶颈。
+The pain isn't "AI can't help." It's **"staying in Figma while using AI is impossible,"** and **"I have to re-explain the same context 30 times a day."** FigWatch exists to remove both — no app switch, and the context comes from the comment and the frame that are already there.
+
+**中 —** 设计师早就在用 AI 做设计审查。流程大家都熟：截图当前画板 → 切到 ChatGPT → 手动打一段上下文（"这是空状态、我们的 tone 偏活泼、先忽略文案、只看 CTA"） → 读回复 → 切回 Figma → 再把反馈粘到评论里。审查本身不难，难的是围绕它的**一整套仪式**：每一帧都要切一次应用、重复一次上下文、再粘贴一次截图。一天下来，这些环节吃掉的时间比审查本身还多；而且越赶时间，上下文就越草率。
+
+真正的痛点不是"AI 帮不上忙"，而是**"想留在 Figma 里用 AI 几乎不可能"**，以及**"同一段上下文一天要重复讲三十遍"**。FigWatch 要解决的就是这两件事——不离开 Figma，上下文直接从评论与画板本身读取。
 
 ### Interview insights / 访谈洞察
 
 | # | Insight / 洞察 | Design implication / 设计启示 |
 |---|---|---|
-| 1 | "Reviews pile up Friday afternoon." / "周五下午审查稿爆积压。" | Audit must feel **on-demand**, not batched. / 审查必须"随叫随到"。 |
-| 2 | "I never trust a chatbot with our tone." / "不敢把品牌 tone 交给通用聊天机器人。" | Guidelines must be **team-owned**, not baked into the model. / 规则由团队掌握，而非写死进模型。 |
+| 1 | "I screenshot to ChatGPT 30 times a day — typing the same context each time kills me." / "一天往 ChatGPT 发 30 次截图，每次都重打一遍上下文，特别耗。" | Context must be read **from the comment and the frame**, not re-entered by the designer. / 上下文直接从评论与画板读取，而不是让设计师每次重输。 |
+| 2 | "I never trust a generic chatbot with our tone." / "不敢把品牌 tone 交给通用聊天机器人。" | Guidelines must be **team-owned**, not baked into the model. / 规则由团队掌握，而非写死进模型。 |
 | 3 | "I don't want another dashboard to check." / "不想再多一个要盯的后台。" | Output lives **where the conversation already is** — in Figma. / 结果要出现在已经发生的对话中——Figma 里。 |
 
 ![Research artifact — affinity map of designer pain points](placeholder://affinity-map.png)
