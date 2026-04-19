@@ -115,7 +115,16 @@ Both paths share the same pipeline: **detect trigger → introspect skill → fe
 ![Locale picker in onboarding](placeholder://locale-picker.png)
 *Placeholder: 引导流程中的 Locale 选择器*
 
-### 5.4 Fail-fast configuration / 配置即刻失败
+### 5.4 Context-aware triggers / 评论即上下文
+
+**EN —** A trigger alone is a blunt instrument. Designers can append free-form context to the comment — "`@ux` focus on the empty state", "`@tone` this is for existing premium users", "`@a11y` ignore the placeholder copy, review the button only". FigWatch passes that context straight into the audit prompt, so the reply narrows its scope, adjusts its voice, or ignores irrelevant regions. Same trigger, different answer — shaped by whatever the designer types after it.
+
+**中 —** 只有触发词太粗暴。设计师可以在评论里追加自由文本作为上下文——"`@ux` 重点看空状态"、"`@tone` 这是给高端付费用户的"、"`@a11y` 忽略占位文字，只审查按钮"。FigWatch 会把这段上下文直接注入审查 prompt，让回复收缩范围、调整语气、或跳过无关区域。同一个触发词，不同上下文，得到不同答案。
+
+![Context-aware trigger — same @ux, different scope](placeholder://context-aware-trigger.png)
+*Placeholder: 同一个 `@ux`，追加不同上下文得到不同审查结果*
+
+### 5.5 Fail-fast configuration / 配置即刻失败
 
 **EN —** Invalid env var → the service refuses to start. Better a loud crash at boot than a silent failure under load. Documented as ADR-001; it shaped how the settings UI validates values live — if the server would reject it, the form rejects it.
 
