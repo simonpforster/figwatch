@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 600" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1F1F1F"/>
+    </marker>
+  </defs>
+  <rect width="1400" height="600" fill="#FAFAFA"/>
+
+  <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">@ux end-to-end journey · 端到端时序</text>
+  <text x="60" y="86" font-size="14" fill="#6B6B6B">From the designer's keystroke to the final audit reply — typical 12–15 s total</text>
+
+  <!-- timeline axis -->
+  <line x1="100" y1="340" x2="1320" y2="340" stroke="#1F1F1F" stroke-width="1.5"/>
+  <line x1="1320" y1="340" x2="1312" y2="334" stroke="#1F1F1F" stroke-width="1.5"/>
+  <line x1="1320" y1="340" x2="1312" y2="346" stroke="#1F1F1F" stroke-width="1.5"/>
+  <text x="1320" y="366" font-size="11" fill="#6B6B6B">time / 时间</text>
+
+  <!-- ticks: 0, 0.4s, 1s, 3s, 12s, 15s -->
+  <g font-size="11" fill="#6B6B6B">
+    <line x1="150" y1="335" x2="150" y2="345" stroke="#6B6B6B"/>
+    <text x="150" y="362" text-anchor="middle">0s</text>
+    <line x1="310" y1="335" x2="310" y2="345" stroke="#6B6B6B"/>
+    <text x="310" y="362" text-anchor="middle">+0.4s</text>
+    <line x1="470" y1="335" x2="470" y2="345" stroke="#6B6B6B"/>
+    <text x="470" y="362" text-anchor="middle">+1s</text>
+    <line x1="650" y1="335" x2="650" y2="345" stroke="#6B6B6B"/>
+    <text x="650" y="362" text-anchor="middle">+3s</text>
+    <line x1="1000" y1="335" x2="1000" y2="345" stroke="#6B6B6B"/>
+    <text x="1000" y="362" text-anchor="middle">+12s</text>
+    <line x1="1200" y1="335" x2="1200" y2="345" stroke="#6B6B6B"/>
+    <text x="1200" y="362" text-anchor="middle">+15s</text>
+  </g>
+
+  <!-- event dots -->
+  <circle cx="150" cy="340" r="8" fill="#1F1F1F"/>
+  <circle cx="310" cy="340" r="8" fill="#1F1F1F"/>
+  <circle cx="470" cy="340" r="8" fill="#1F1F1F"/>
+  <circle cx="650" cy="340" r="8" fill="#1F1F1F"/>
+  <circle cx="1000" cy="340" r="8" fill="#1F1F1F"/>
+  <circle cx="1200" cy="340" r="10" fill="#1F1F1F" stroke="#F0EDE6" stroke-width="3"/>
+
+  <!-- labels above -->
+  <g>
+    <rect x="60" y="150" width="180" height="120" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.2"/>
+    <text x="150" y="176" text-anchor="middle" font-size="12" font-weight="600" fill="#1F1F1F">1 · Comment</text>
+    <text x="150" y="198" text-anchor="middle" font-size="11" fill="#6B6B6B">"@ux focus on</text>
+    <text x="150" y="214" text-anchor="middle" font-size="11" fill="#6B6B6B">empty state"</text>
+    <text x="150" y="244" text-anchor="middle" font-size="10" fill="#8A8A8A">designer types</text>
+    <text x="150" y="260" text-anchor="middle" font-size="10" fill="#8A8A8A">设计师输入</text>
+    <line x1="150" y1="270" x2="150" y2="330" stroke="#1F1F1F" stroke-width="1" marker-end="url(#arr)"/>
+  </g>
+
+  <g>
+    <rect x="220" y="398" width="180" height="110" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.2"/>
+    <text x="310" y="424" text-anchor="middle" font-size="12" font-weight="600" fill="#1F1F1F">2 · Ack</text>
+    <text x="310" y="446" text-anchor="middle" font-size="11" fill="#6B6B6B">"Working on it…"</text>
+    <text x="310" y="472" text-anchor="middle" font-size="10" fill="#8A8A8A">&lt; 400 ms</text>
+    <text x="310" y="488" text-anchor="middle" font-size="10" fill="#8A8A8A">先回占位</text>
+    <line x1="310" y1="398" x2="310" y2="350" stroke="#1F1F1F" stroke-width="1" marker-end="url(#arr)"/>
+  </g>
+
+  <g>
+    <rect x="380" y="150" width="180" height="120" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.2"/>
+    <text x="470" y="176" text-anchor="middle" font-size="12" font-weight="600" fill="#1F1F1F">3 · Queue pos</text>
+    <text x="470" y="198" text-anchor="middle" font-size="11" fill="#6B6B6B">"You're 3rd</text>
+    <text x="470" y="214" text-anchor="middle" font-size="11" fill="#6B6B6B">in queue"</text>
+    <text x="470" y="244" text-anchor="middle" font-size="10" fill="#8A8A8A">updates ack</text>
+    <text x="470" y="260" text-anchor="middle" font-size="10" fill="#8A8A8A">更新排队位</text>
+    <line x1="470" y1="270" x2="470" y2="330" stroke="#1F1F1F" stroke-width="1" marker-end="url(#arr)"/>
+  </g>
+
+  <g>
+    <rect x="560" y="398" width="180" height="110" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.2"/>
+    <text x="650" y="424" text-anchor="middle" font-size="12" font-weight="600" fill="#1F1F1F">4 · Fetch</text>
+    <text x="650" y="446" text-anchor="middle" font-size="11" fill="#6B6B6B">screenshot +</text>
+    <text x="650" y="462" text-anchor="middle" font-size="11" fill="#6B6B6B">node tree</text>
+    <text x="650" y="488" text-anchor="middle" font-size="10" fill="#8A8A8A">按需抓取</text>
+    <line x1="650" y1="398" x2="650" y2="350" stroke="#1F1F1F" stroke-width="1" marker-end="url(#arr)"/>
+  </g>
+
+  <g>
+    <rect x="910" y="150" width="180" height="120" rx="8" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1.2"/>
+    <text x="1000" y="176" text-anchor="middle" font-size="12" font-weight="600" fill="#1F1F1F">5 · AI audit</text>
+    <text x="1000" y="198" text-anchor="middle" font-size="11" fill="#6B6B6B">Claude / Gemini</text>
+    <text x="1000" y="220" text-anchor="middle" font-size="11" fill="#6B6B6B">8–12 s call</text>
+    <text x="1000" y="244" text-anchor="middle" font-size="10" fill="#8A8A8A">vs. heuristics</text>
+    <text x="1000" y="260" text-anchor="middle" font-size="10" fill="#8A8A8A">按规则审查</text>
+    <line x1="1000" y1="270" x2="1000" y2="330" stroke="#1F1F1F" stroke-width="1" marker-end="url(#arr)"/>
+  </g>
+
+  <g>
+    <rect x="1110" y="398" width="220" height="110" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="2"/>
+    <text x="1220" y="424" text-anchor="middle" font-size="12" font-weight="600" fill="#1F1F1F">6 · Final reply</text>
+    <text x="1220" y="446" text-anchor="middle" font-size="11" fill="#6B6B6B">summary · findings · fix</text>
+    <text x="1220" y="472" text-anchor="middle" font-size="10" fill="#8A8A8A">overwrites the ack</text>
+    <text x="1220" y="488" text-anchor="middle" font-size="10" fill="#8A8A8A">覆盖占位回复</text>
+    <line x1="1200" y1="398" x2="1200" y2="350" stroke="#1F1F1F" stroke-width="1.5" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- background hint: "Working on it..." stays visible till step 6 -->
+  <rect x="310" y="380" width="890" height="2" fill="#8A8A8A" opacity="0.3"/>
+  <text x="755" y="546" font-size="11" text-anchor="middle" fill="#8A8A8A" font-style="italic">the ack stays visible and updates — perceived latency collapses / 占位回复持续可见并更新 · 感知延迟骤降</text>
+</svg>

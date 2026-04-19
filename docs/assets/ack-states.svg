@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1F1F1F"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="560" fill="#FAFAFA"/>
+
+  <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">Reply states · 回复三态</text>
+  <text x="60" y="86" font-size="14" fill="#6B6B6B">One comment reply, rewritten in place — ack → queue → final audit</text>
+
+  <!-- Comment card 1 -->
+  <g transform="translate(60, 150)">
+    <rect width="340" height="260" rx="12" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+    <circle cx="32" cy="38" r="14" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1"/>
+    <text x="32" y="43" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">FW</text>
+    <text x="60" y="36" font-size="12" font-weight="600" fill="#1F1F1F">FigWatch</text>
+    <text x="60" y="52" font-size="10" fill="#8A8A8A">just now</text>
+    <line x1="20" y1="78" x2="320" y2="78" stroke="#EAEAEA"/>
+    <text x="20" y="110" font-size="13" fill="#1F1F1F">Working on it…</text>
+    <circle cx="22" cy="136" r="3" fill="#8A8A8A"/>
+    <circle cx="34" cy="136" r="3" fill="#8A8A8A" opacity="0.6"/>
+    <circle cx="46" cy="136" r="3" fill="#8A8A8A" opacity="0.3"/>
+    <rect x="20" y="222" width="60" height="20" rx="4" fill="#F0EDE6"/>
+    <text x="50" y="236" text-anchor="middle" font-size="10" fill="#6B6B6B">&lt; 400 ms</text>
+  </g>
+  <text x="230" y="438" text-anchor="middle" font-size="13" font-weight="600" fill="#1F1F1F">1 · Ack</text>
+  <text x="230" y="458" text-anchor="middle" font-size="11" fill="#6B6B6B">immediate placeholder</text>
+  <text x="230" y="474" text-anchor="middle" font-size="11" fill="#8A8A8A">先应答</text>
+
+  <!-- Comment card 2 -->
+  <g transform="translate(430, 150)">
+    <rect width="340" height="260" rx="12" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+    <circle cx="32" cy="38" r="14" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1"/>
+    <text x="32" y="43" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">FW</text>
+    <text x="60" y="36" font-size="12" font-weight="600" fill="#1F1F1F">FigWatch</text>
+    <text x="60" y="52" font-size="10" fill="#8A8A8A">edited · 2s ago</text>
+    <line x1="20" y1="78" x2="320" y2="78" stroke="#EAEAEA"/>
+    <text x="20" y="108" font-size="13" fill="#1F1F1F">You're 3rd in queue.</text>
+    <text x="20" y="130" font-size="12" fill="#6B6B6B">Estimated wait ~ 6 s.</text>
+    <!-- queue dots -->
+    <rect x="20" y="160" width="300" height="8" rx="4" fill="#EEEEEE"/>
+    <rect x="20" y="160" width="100" height="8" rx="4" fill="#1F1F1F"/>
+    <text x="20" y="190" font-size="10" fill="#8A8A8A">position 3 of 7</text>
+    <rect x="20" y="222" width="70" height="20" rx="4" fill="#F0EDE6"/>
+    <text x="55" y="236" text-anchor="middle" font-size="10" fill="#6B6B6B">+ 1–3 s</text>
+  </g>
+  <text x="600" y="438" text-anchor="middle" font-size="13" font-weight="600" fill="#1F1F1F">2 · Queue position</text>
+  <text x="600" y="458" text-anchor="middle" font-size="11" fill="#6B6B6B">honest progress signal</text>
+  <text x="600" y="474" text-anchor="middle" font-size="11" fill="#8A8A8A">显示排队位</text>
+
+  <!-- Comment card 3 -->
+  <g transform="translate(800, 150)">
+    <rect width="340" height="260" rx="12" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="2"/>
+    <circle cx="32" cy="38" r="14" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1"/>
+    <text x="32" y="43" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">FW</text>
+    <text x="60" y="36" font-size="12" font-weight="600" fill="#1F1F1F">FigWatch</text>
+    <text x="60" y="52" font-size="10" fill="#8A8A8A">edited · 14s ago</text>
+    <line x1="20" y1="78" x2="320" y2="78" stroke="#EAEAEA"/>
+    <text x="20" y="102" font-size="12" font-weight="600" fill="#1F1F1F">UX audit · empty state</text>
+    <circle cx="26" cy="124" r="4" fill="#C0392B"/>
+    <text x="38" y="128" font-size="11" fill="#1F1F1F">Missing primary CTA</text>
+    <circle cx="26" cy="146" r="4" fill="#E6B422"/>
+    <text x="38" y="150" font-size="11" fill="#1F1F1F">Illustration competes with copy</text>
+    <circle cx="26" cy="168" r="4" fill="#2E8540"/>
+    <text x="38" y="172" font-size="11" fill="#1F1F1F">Nit: tighten line-height</text>
+    <text x="20" y="198" font-size="10" fill="#6B6B6B">Suggested fix: add "Start a tour"</text>
+    <text x="20" y="212" font-size="10" fill="#6B6B6B">CTA, move illustration to a corner.</text>
+    <rect x="20" y="224" width="70" height="20" rx="4" fill="#1F1F1F"/>
+    <text x="55" y="238" text-anchor="middle" font-size="10" fill="#FFFFFF">done</text>
+  </g>
+  <text x="970" y="438" text-anchor="middle" font-size="13" font-weight="600" fill="#1F1F1F">3 · Final audit</text>
+  <text x="970" y="458" text-anchor="middle" font-size="11" fill="#6B6B6B">overwrites the same reply</text>
+  <text x="970" y="474" text-anchor="middle" font-size="11" fill="#8A8A8A">最终结果覆盖</text>
+
+  <!-- arrows between cards -->
+  <line x1="400" y1="280" x2="430" y2="280" stroke="#1F1F1F" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="770" y1="280" x2="800" y2="280" stroke="#1F1F1F" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <text x="600" y="528" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">Same comment reply — never a second bubble, never silence.  始终是同一条回复——不再开新气泡，也不沉默。</text>
+</svg>

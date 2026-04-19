@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 900" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif">
+  <rect width="1000" height="900" fill="#FAFAFA"/>
+
+  <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">Menu bar · 菜单栏</text>
+  <text x="60" y="86" font-size="14" fill="#6B6B6B">Answers two questions: "which files am I watching?" and "what triggers can I use?"</text>
+
+  <!-- mac menu bar strip -->
+  <rect x="60" y="130" width="880" height="28" rx="0" fill="#1F1F1F"/>
+  <circle cx="80" cy="144" r="5" fill="#3A3A3A"/>
+  <circle cx="80" cy="144" r="3" fill="#D0D0D0"/>
+  <text x="104" y="149" font-size="11" fill="#FFFFFF" font-weight="600">FW</text>
+  <text x="128" y="149" font-size="11" fill="#BFBFBF">FigWatch</text>
+  <text x="904" y="149" text-anchor="end" font-size="11" fill="#BFBFBF">3 watched · 5 triggers · 23:02</text>
+
+  <!-- pointer arrow from menu bar down -->
+  <polygon points="140,158 150,172 160,158" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+
+  <!-- dropdown panel -->
+  <rect x="80" y="172" width="400" height="680" rx="10" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+
+  <!-- header row -->
+  <rect x="80" y="172" width="400" height="46" rx="10" fill="#F0EDE6"/>
+  <text x="100" y="200" font-size="13" font-weight="600" fill="#1F1F1F">FigWatch</text>
+  <circle cx="452" cy="195" r="5" fill="#2E8540"/>
+  <text x="440" y="199" text-anchor="end" font-size="11" fill="#6B6B6B">online</text>
+
+  <!-- Section: Watched files -->
+  <text x="100" y="248" font-size="10" font-weight="600" fill="#8A8A8A" letter-spacing="1">WATCHED FILES · 监听文件</text>
+  <text x="460" y="248" text-anchor="end" font-size="11" fill="#6B6B6B">+ Add</text>
+
+  <g font-size="12" fill="#1F1F1F">
+    <!-- file 1 -->
+    <rect x="92" y="262" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <rect x="104" y="274" width="16" height="16" rx="3" fill="#1F1F1F"/>
+    <text x="132" y="280" font-size="12" font-weight="600">Checkout v3 — Web</text>
+    <text x="132" y="294" font-size="10" fill="#8A8A8A">figma.com/file/abc123… · Alex</text>
+    <text x="456" y="287" text-anchor="end" font-size="11" fill="#6B6B6B">↗</text>
+
+    <!-- file 2 -->
+    <rect x="92" y="308" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <rect x="104" y="320" width="16" height="16" rx="3" fill="#1F1F1F"/>
+    <text x="132" y="326" font-size="12" font-weight="600">Onboarding Revamp</text>
+    <text x="132" y="340" font-size="10" fill="#8A8A8A">figma.com/file/def456… · Alex</text>
+    <text x="456" y="333" text-anchor="end" font-size="11" fill="#6B6B6B">↗</text>
+
+    <!-- file 3 -->
+    <rect x="92" y="354" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <rect x="104" y="366" width="16" height="16" rx="3" fill="#1F1F1F"/>
+    <text x="132" y="372" font-size="12" font-weight="600">Design System — Tokens</text>
+    <text x="132" y="386" font-size="10" fill="#8A8A8A">figma.com/file/ghi789… · Alex</text>
+    <text x="456" y="379" text-anchor="end" font-size="11" fill="#6B6B6B">↗</text>
+  </g>
+
+  <!-- divider -->
+  <line x1="92" y1="418" x2="468" y2="418" stroke="#EAEAEA"/>
+
+  <!-- Section: Active triggers -->
+  <text x="100" y="444" font-size="10" font-weight="600" fill="#8A8A8A" letter-spacing="1">ACTIVE TRIGGERS · 可用触发词</text>
+  <text x="460" y="444" text-anchor="end" font-size="11" fill="#6B6B6B">Manage</text>
+
+  <g>
+    <!-- trigger 1 -->
+    <rect x="92" y="458" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <text x="104" y="484" font-size="12" font-family="Menlo, monospace" font-weight="600" fill="#1F1F1F">@tone</text>
+    <text x="160" y="478" font-size="11" fill="#6B6B6B">Tone of voice audit</text>
+    <rect x="160" y="484" width="54" height="16" rx="3" fill="#1F1F1F"/>
+    <text x="187" y="496" text-anchor="middle" font-size="9" fill="#FFFFFF">built-in</text>
+
+    <!-- trigger 2 -->
+    <rect x="92" y="504" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <text x="104" y="530" font-size="12" font-family="Menlo, monospace" font-weight="600" fill="#1F1F1F">@ux</text>
+    <text x="160" y="524" font-size="11" fill="#6B6B6B">Nielsen heuristics audit</text>
+    <rect x="160" y="530" width="54" height="16" rx="3" fill="#1F1F1F"/>
+    <text x="187" y="542" text-anchor="middle" font-size="9" fill="#FFFFFF">built-in</text>
+
+    <!-- trigger 3 -->
+    <rect x="92" y="550" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <text x="104" y="576" font-size="12" font-family="Menlo, monospace" font-weight="600" fill="#1F1F1F">@a11y</text>
+    <text x="160" y="570" font-size="11" fill="#6B6B6B">Accessibility checklist</text>
+    <rect x="160" y="576" width="42" height="16" rx="3" fill="#6B6B6B"/>
+    <text x="181" y="588" text-anchor="middle" font-size="9" fill="#FFFFFF">team</text>
+
+    <!-- trigger 4 -->
+    <rect x="92" y="596" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <text x="104" y="622" font-size="12" font-family="Menlo, monospace" font-weight="600" fill="#1F1F1F">@copy-length</text>
+    <text x="196" y="616" font-size="11" fill="#6B6B6B">Copy length lint</text>
+    <rect x="196" y="622" width="42" height="16" rx="3" fill="#6B6B6B"/>
+    <text x="217" y="634" text-anchor="middle" font-size="9" fill="#FFFFFF">team</text>
+
+    <!-- trigger 5 -->
+    <rect x="92" y="642" width="376" height="40" rx="6" fill="#FAFAFA"/>
+    <text x="104" y="668" font-size="12" font-family="Menlo, monospace" font-weight="600" fill="#1F1F1F">@draft-review</text>
+    <text x="210" y="662" font-size="11" fill="#6B6B6B">Alex's early WIP checks</text>
+    <rect x="210" y="668" width="62" height="16" rx="3" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="0.5"/>
+    <text x="241" y="680" text-anchor="middle" font-size="9" fill="#1F1F1F">personal</text>
+  </g>
+
+  <!-- divider -->
+  <line x1="92" y1="702" x2="468" y2="702" stroke="#EAEAEA"/>
+
+  <!-- footer row -->
+  <g font-size="11" fill="#6B6B6B">
+    <text x="100" y="726">Locale</text>
+    <text x="456" y="726" text-anchor="end" fill="#1F1F1F">UK ▾</text>
+    <text x="100" y="750">Model</text>
+    <text x="456" y="750" text-anchor="end" fill="#1F1F1F">Claude · Gemini fallback ▾</text>
+    <text x="100" y="774">Workers</text>
+    <text x="456" y="774" text-anchor="end" fill="#1F1F1F">2 ▾</text>
+  </g>
+  <line x1="92" y1="792" x2="468" y2="792" stroke="#EAEAEA"/>
+  <text x="100" y="818" font-size="11" fill="#6B6B6B">Preferences…</text>
+  <text x="456" y="818" text-anchor="end" font-size="11" fill="#C0392B">Quit</text>
+
+  <!-- annotations on the right -->
+  <g font-size="11" fill="#6B6B6B">
+    <line x1="480" y1="284" x2="560" y2="284" stroke="#8A8A8A" stroke-dasharray="3 3"/>
+    <text x="572" y="280" font-size="12" fill="#1F1F1F">What's on</text>
+    <text x="572" y="294" font-style="italic">"which files am I watching?"</text>
+    <text x="572" y="308" font-style="italic">我在监听哪些文件</text>
+
+    <line x1="480" y1="574" x2="560" y2="574" stroke="#8A8A8A" stroke-dasharray="3 3"/>
+    <text x="572" y="570" font-size="12" fill="#1F1F1F">What I can type</text>
+    <text x="572" y="584" font-style="italic">"what triggers can I use?"</text>
+    <text x="572" y="598" font-style="italic">能用哪些触发词</text>
+
+    <line x1="480" y1="760" x2="560" y2="760" stroke="#8A8A8A" stroke-dasharray="3 3"/>
+    <text x="572" y="756" font-size="12" fill="#1F1F1F">Quick settings</text>
+    <text x="572" y="770" font-style="italic">locale · model · concurrency</text>
+    <text x="572" y="784" font-style="italic">轻量设置</text>
+  </g>
+</svg>

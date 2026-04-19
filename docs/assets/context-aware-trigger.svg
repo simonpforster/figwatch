@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 720" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1F1F1F"/>
+    </marker>
+  </defs>
+  <rect width="1400" height="720" fill="#FAFAFA"/>
+
+  <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">Same trigger, different context · 同触发词，不同上下文</text>
+  <text x="60" y="86" font-size="14" fill="#6B6B6B">Free-form text after the trigger narrows scope, shifts voice, or excludes regions</text>
+
+  <!-- divider between columns -->
+  <line x1="700" y1="140" x2="700" y2="680" stroke="#EAEAEA" stroke-width="1" stroke-dasharray="4 4"/>
+
+  <!-- LEFT column -->
+  <g>
+    <!-- input comment -->
+    <rect x="60" y="150" width="580" height="118" rx="12" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+    <circle cx="92" cy="188" r="14" fill="#D6E3F5" stroke="#1F1F1F" stroke-width="1"/>
+    <text x="92" y="193" text-anchor="middle" font-size="10" font-weight="600" fill="#1F1F1F">A</text>
+    <text x="120" y="186" font-size="12" font-weight="600" fill="#1F1F1F">Alex · designer</text>
+    <text x="120" y="202" font-size="10" fill="#8A8A8A">comment on Frame 12</text>
+    <text x="120" y="234" font-size="13" fill="#1F1F1F">@ux focus on the empty state</text>
+    <text x="120" y="252" font-size="11" fill="#6B6B6B" font-style="italic">— scope limited to empty-state screen only</text>
+
+    <!-- arrow down -->
+    <line x1="350" y1="278" x2="350" y2="318" stroke="#1F1F1F" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- output reply -->
+    <rect x="60" y="328" width="580" height="320" rx="12" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1.5"/>
+    <circle cx="92" cy="362" r="14" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+    <text x="92" y="367" text-anchor="middle" font-size="10" font-weight="600" fill="#1F1F1F">FW</text>
+    <text x="120" y="360" font-size="12" font-weight="600" fill="#1F1F1F">FigWatch · @ux</text>
+    <text x="120" y="376" font-size="10" fill="#8A8A8A">reply · 12s</text>
+
+    <text x="80" y="412" font-size="12" font-weight="600" fill="#1F1F1F">UX audit · scope = empty state</text>
+    <circle cx="86" cy="436" r="4" fill="#C0392B"/>
+    <text x="98" y="440" font-size="11" fill="#1F1F1F">No primary CTA — user stuck without next step</text>
+    <circle cx="86" cy="458" r="4" fill="#C0392B"/>
+    <text x="98" y="462" font-size="11" fill="#1F1F1F">Illustration dominates — copy hard to read</text>
+    <circle cx="86" cy="480" r="4" fill="#E6B422"/>
+    <text x="98" y="484" font-size="11" fill="#1F1F1F">Secondary link buried at the bottom</text>
+    <circle cx="86" cy="502" r="4" fill="#2E8540"/>
+    <text x="98" y="506" font-size="11" fill="#1F1F1F">Nit: tighten headline line-height</text>
+    <text x="80" y="542" font-size="11" fill="#6B6B6B">Other regions (header, nav, footer) not reviewed.</text>
+    <text x="80" y="558" font-size="11" fill="#6B6B6B">未审查：页头 / 导航 / 页脚</text>
+    <rect x="80" y="582" width="140" height="22" rx="4" fill="#1F1F1F"/>
+    <text x="150" y="598" text-anchor="middle" font-size="11" fill="#FFFFFF">4 findings</text>
+  </g>
+
+  <!-- RIGHT column -->
+  <g>
+    <rect x="760" y="150" width="580" height="118" rx="12" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+    <circle cx="792" cy="188" r="14" fill="#E3D5F0" stroke="#1F1F1F" stroke-width="1"/>
+    <text x="792" y="193" text-anchor="middle" font-size="10" font-weight="600" fill="#1F1F1F">B</text>
+    <text x="820" y="186" font-size="12" font-weight="600" fill="#1F1F1F">Bea · designer</text>
+    <text x="820" y="202" font-size="10" fill="#8A8A8A">comment on Frame 12</text>
+    <text x="820" y="234" font-size="13" fill="#1F1F1F">@ux ignore placeholder copy, review button only</text>
+    <text x="820" y="252" font-size="11" fill="#6B6B6B" font-style="italic">— exclude text, audit the CTA behaviour</text>
+
+    <line x1="1050" y1="278" x2="1050" y2="318" stroke="#1F1F1F" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <rect x="760" y="328" width="580" height="320" rx="12" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="1.5"/>
+    <circle cx="792" cy="362" r="14" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+    <text x="792" y="367" text-anchor="middle" font-size="10" font-weight="600" fill="#1F1F1F">FW</text>
+    <text x="820" y="360" font-size="12" font-weight="600" fill="#1F1F1F">FigWatch · @ux</text>
+    <text x="820" y="376" font-size="10" fill="#8A8A8A">reply · 11s</text>
+
+    <text x="780" y="412" font-size="12" font-weight="600" fill="#1F1F1F">UX audit · scope = CTA button</text>
+    <circle cx="786" cy="436" r="4" fill="#C0392B"/>
+    <text x="798" y="440" font-size="11" fill="#1F1F1F">No disabled state when form is invalid</text>
+    <circle cx="786" cy="458" r="4" fill="#E6B422"/>
+    <text x="798" y="462" font-size="11" fill="#1F1F1F">Target size 36px — below 44px minimum</text>
+    <circle cx="786" cy="480" r="4" fill="#E6B422"/>
+    <text x="798" y="484" font-size="11" fill="#1F1F1F">Loading state uses spinner only — add label</text>
+    <circle cx="786" cy="502" r="4" fill="#2E8540"/>
+    <text x="798" y="506" font-size="11" fill="#1F1F1F">Nit: align label to center</text>
+    <text x="780" y="542" font-size="11" fill="#6B6B6B">Copy excluded per request.</text>
+    <text x="780" y="558" font-size="11" fill="#6B6B6B">按指示：不审查文案</text>
+    <rect x="780" y="582" width="140" height="22" rx="4" fill="#1F1F1F"/>
+    <text x="850" y="598" text-anchor="middle" font-size="11" fill="#FFFFFF">4 findings</text>
+  </g>
+
+  <text x="700" y="700" text-anchor="middle" font-size="11" fill="#8A8A8A" font-style="italic">Same skill (@ux), same frame — but the context string rewrites the prompt, and the reply follows.  同一个技能、同一个画板——不同 context 重写 prompt，回复随之而变。</text>
+</svg>
