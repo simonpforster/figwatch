@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 900" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 900" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'WenQuanYi Zen Hei', 'Microsoft YaHei', sans-serif">
   <rect width="1000" height="900" fill="#FAFAFA"/>
 
   <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">Menu bar · 菜单栏</text>
