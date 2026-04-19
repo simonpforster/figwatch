@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 960" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif">
+  <!-- palette -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1F1F1F"/>
+    </marker>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8A8A8A"/>
+    </marker>
+  </defs>
+
+  <!-- background -->
+  <rect width="1400" height="960" fill="#FAFAFA"/>
+
+  <!-- title -->
+  <text x="60" y="60" font-size="22" font-weight="600" fill="#1F1F1F">FigWatch · Architecture</text>
+  <text x="60" y="86" font-size="14" fill="#6B6B6B">One domain core, two front doors · 一个内核，两个入口</text>
+
+  <!-- ===== Top: Figma source ===== -->
+  <g>
+    <rect x="510" y="130" width="380" height="90" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5"/>
+    <text x="700" y="162" text-anchor="middle" font-size="15" font-weight="600" fill="#1F1F1F">Figma · Comment thread</text>
+    <text x="700" y="185" text-anchor="middle" font-size="13" fill="#6B6B6B">"@ux focus on the empty state"</text>
+    <text x="700" y="204" text-anchor="middle" font-size="12" fill="#8A8A8A">trigger + free-form context</text>
+  </g>
+
+  <!-- split arrows -->
+  <path d="M 620 220 L 300 295" stroke="#1F1F1F" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 780 220 L 1100 295" stroke="#1F1F1F" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+  <text x="430" y="260" font-size="12" fill="#6B6B6B" font-style="italic">poll every N sec</text>
+  <text x="430" y="276" font-size="12" fill="#6B6B6B" font-style="italic">轮询</text>
+  <text x="900" y="260" font-size="12" fill="#6B6B6B" font-style="italic">webhook (push)</text>
+  <text x="900" y="276" font-size="12" fill="#6B6B6B" font-style="italic">推送</text>
+
+  <!-- ===== Left: Desktop ===== -->
+  <g>
+    <rect x="100" y="300" width="400" height="200" rx="10" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="2"/>
+    <rect x="100" y="300" width="400" height="36" rx="10" fill="#1F1F1F"/>
+    <text x="120" y="324" font-size="14" font-weight="600" fill="#FFFFFF">FigWatch Desktop</text>
+    <text x="480" y="324" text-anchor="end" font-size="12" fill="#BFBFBF">macOS menu bar</text>
+
+    <text x="120" y="366" font-size="13" fill="#1F1F1F">· Installed by the designer</text>
+    <text x="120" y="388" font-size="13" fill="#1F1F1F">· Uses own Claude Code login</text>
+    <text x="120" y="410" font-size="13" fill="#1F1F1F">· Polls watched files</text>
+    <text x="120" y="432" font-size="13" fill="#1F1F1F">· Replies as the designer</text>
+    <text x="120" y="454" font-size="13" fill="#1F1F1F">· Serial, 1 audit at a time</text>
+    <text x="120" y="480" font-size="12" fill="#6B6B6B" font-style="italic">Personal assistant · 私人助理</text>
+  </g>
+
+  <!-- ===== Right: Server ===== -->
+  <g>
+    <rect x="900" y="300" width="400" height="200" rx="10" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="2"/>
+    <rect x="900" y="300" width="400" height="36" rx="10" fill="#1F1F1F"/>
+    <text x="920" y="324" font-size="14" font-weight="600" fill="#FFFFFF">FigWatch Server</text>
+    <text x="1280" y="324" text-anchor="end" font-size="12" fill="#BFBFBF">Docker</text>
+
+    <text x="920" y="366" font-size="13" fill="#1F1F1F">· Deployed by design ops</text>
+    <text x="920" y="388" font-size="13" fill="#1F1F1F">· Shared service account (bot)</text>
+    <text x="920" y="410" font-size="13" fill="#1F1F1F">· Figma webhook receiver</text>
+    <text x="920" y="432" font-size="13" fill="#1F1F1F">· Worker pool, 1–N parallel</text>
+    <text x="920" y="454" font-size="13" fill="#1F1F1F">· OTEL + Admin Dashboard</text>
+    <text x="920" y="480" font-size="12" fill="#6B6B6B" font-style="italic">Design infrastructure · 设计基础设施</text>
+  </g>
+
+  <!-- arrows to core -->
+  <path d="M 300 500 L 600 590" stroke="#1F1F1F" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 1100 500 L 800 590" stroke="#1F1F1F" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- ===== Shared core ===== -->
+  <g>
+    <rect x="340" y="600" width="720" height="200" rx="10" fill="#F0EDE6" stroke="#1F1F1F" stroke-width="2"/>
+    <text x="700" y="634" text-anchor="middle" font-size="15" font-weight="600" fill="#1F1F1F">Shared Python core · figwatch/</text>
+    <text x="700" y="654" text-anchor="middle" font-size="12" fill="#6B6B6B">same trigger detection · skill loader · provider abstraction · reply composer</text>
+
+    <!-- pipeline steps -->
+    <g transform="translate(370, 690)">
+      <rect x="0" y="0" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+      <text x="60" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">1 · Detect</text>
+      <text x="60" y="40" text-anchor="middle" font-size="11" fill="#6B6B6B">trigger word</text>
+      <text x="60" y="58" text-anchor="middle" font-size="10" fill="#8A8A8A">识别触发词</text>
+    </g>
+
+    <g transform="translate(510, 690)">
+      <rect x="0" y="0" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+      <text x="60" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">2 · Introspect</text>
+      <text x="60" y="40" text-anchor="middle" font-size="11" fill="#6B6B6B">skill needs</text>
+      <text x="60" y="58" text-anchor="middle" font-size="10" fill="#8A8A8A">技能自省</text>
+    </g>
+
+    <g transform="translate(650, 690)">
+      <rect x="0" y="0" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+      <text x="60" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">3 · Fetch</text>
+      <text x="60" y="40" text-anchor="middle" font-size="11" fill="#6B6B6B">assets on demand</text>
+      <text x="60" y="58" text-anchor="middle" font-size="10" fill="#8A8A8A">按需抓取</text>
+    </g>
+
+    <g transform="translate(790, 690)">
+      <rect x="0" y="0" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+      <text x="60" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">4 · Audit</text>
+      <text x="60" y="40" text-anchor="middle" font-size="11" fill="#6B6B6B">AI call</text>
+      <text x="60" y="58" text-anchor="middle" font-size="10" fill="#8A8A8A">AI 审查</text>
+    </g>
+
+    <g transform="translate(930, 690)">
+      <rect x="0" y="0" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1"/>
+      <text x="60" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#1F1F1F">5 · Reply</text>
+      <text x="60" y="40" text-anchor="middle" font-size="11" fill="#6B6B6B">inline</text>
+      <text x="60" y="58" text-anchor="middle" font-size="10" fill="#8A8A8A">回帖</text>
+    </g>
+
+    <!-- tiny arrows between steps -->
+    <line x1="490" y1="730" x2="510" y2="730" stroke="#8A8A8A" stroke-width="1" marker-end="url(#arrow-muted)"/>
+    <line x1="630" y1="730" x2="650" y2="730" stroke="#8A8A8A" stroke-width="1" marker-end="url(#arrow-muted)"/>
+    <line x1="770" y1="730" x2="790" y2="730" stroke="#8A8A8A" stroke-width="1" marker-end="url(#arrow-muted)"/>
+    <line x1="910" y1="730" x2="930" y2="730" stroke="#8A8A8A" stroke-width="1" marker-end="url(#arrow-muted)"/>
+  </g>
+
+  <!-- ===== Dependencies ===== -->
+  <!-- Skills -->
+  <g>
+    <rect x="100" y="840" width="260" height="80" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="230" y="868" text-anchor="middle" font-size="13" font-weight="600" fill="#1F1F1F">Skills (.md files)</text>
+    <text x="230" y="888" text-anchor="middle" font-size="11" fill="#6B6B6B">@tone · @ux · @a11y · custom</text>
+    <text x="230" y="906" text-anchor="middle" font-size="10" fill="#8A8A8A">built-in / team / personal · 可移植</text>
+  </g>
+  <line x1="230" y1="840" x2="430" y2="800" stroke="#8A8A8A" stroke-width="1" stroke-dasharray="3 3"/>
+
+  <!-- AI Providers -->
+  <g>
+    <rect x="570" y="840" width="260" height="80" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="700" y="868" text-anchor="middle" font-size="13" font-weight="600" fill="#1F1F1F">AI Providers</text>
+    <text x="700" y="888" text-anchor="middle" font-size="11" fill="#6B6B6B">Anthropic Claude · Google Gemini</text>
+    <text x="700" y="906" text-anchor="middle" font-size="10" fill="#8A8A8A">provider-agnostic interface</text>
+  </g>
+  <line x1="700" y1="840" x2="850" y2="800" stroke="#8A8A8A" stroke-width="1" stroke-dasharray="3 3"/>
+
+  <!-- Figma API -->
+  <g>
+    <rect x="1040" y="840" width="260" height="80" rx="8" fill="#FFFFFF" stroke="#1F1F1F" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="1170" y="868" text-anchor="middle" font-size="13" font-weight="600" fill="#1F1F1F">Figma API</text>
+    <text x="1170" y="888" text-anchor="middle" font-size="11" fill="#6B6B6B">screenshot · node tree · comments</text>
+    <text x="1170" y="906" text-anchor="middle" font-size="10" fill="#8A8A8A">read + post reply</text>
+  </g>
+  <line x1="1170" y1="840" x2="990" y2="800" stroke="#8A8A8A" stroke-width="1" stroke-dasharray="3 3"/>
+
+  <!-- reply-back arrow from core back to Figma -->
+  <path d="M 1060 650 C 1260 500, 1260 280, 900 205" stroke="#1F1F1F" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="1280" y="420" font-size="11" fill="#6B6B6B" font-style="italic" text-anchor="middle">
+    <tspan x="1300" dy="0">reply</tspan>
+    <tspan x="1300" dy="14">inline</tspan>
+    <tspan x="1300" dy="14">回帖</tspan>
+  </text>
+</svg>
