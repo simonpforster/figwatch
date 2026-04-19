@@ -67,49 +67,22 @@
 
 ## 04 · The Solution / 解决方案
 
-**EN —** One domain core, two products for two very different buyers.
+**EN —** One domain core, two front doors.
 
-**中 —** 一个领域内核，面向两种截然不同的用户，做成两个产品。
+- **macOS menu bar app (Desktop)** — zero-friction install for individual designers and small teams. Uses the designer's own Claude Code login (no API key to paste), polls the files they care about, and replies from their own account.
+- **Docker server** — for design ops. Receives Figma webhooks (no polling), scales with a worker pool, uses a shared service account to reply as a team bot, and emits OpenTelemetry metrics. Ships with an admin dashboard (§7.3).
 
-### 4.1 Two products, one brain / 两个产品，同一个大脑
+Both paths share the **same Python core**: detect trigger → introspect skill → fetch only what's needed → run AI audit → reply inline. A skill written once runs identically in either place — teams typically prototype locally on Desktop, then promote the `.md` file to Server for org-wide use.
 
-**EN —** Early prototypes tried to serve everyone with a single binary. It failed both ways — too much setup for a solo designer, too little control for a design ops team. We split the delivery, kept the logic:
+**中 —** 一个领域内核，两个入口。
 
-- **FigWatch Desktop** — a macOS menu bar app. Installed by **the designer themselves** in under 2 minutes. Uses the designer's existing Claude Code login (no API key to paste), polls the files they personally care about, replies from their own account. Fully local; nothing leaves the laptop except Figma and AI API calls.
-- **FigWatch Server** — a Docker image deployed by **design ops / platform teams**. Serves a whole org. Receives Figma webhooks (no polling lag), runs a worker pool for concurrent audits, uses a shared service account, exposes an admin dashboard (§7.3), emits OpenTelemetry metrics to the team's existing observability stack.
+- **macOS 菜单栏应用（Desktop）**——面向个人与小团队，零门槛安装。复用设计师已登录的 Claude Code（无需粘贴 API Key），轮询关心的文件，以本人身份回帖。
+- **Docker 服务端**——面向设计运营。基于 Figma Webhook（无轮询），通过 worker 池横向扩展，使用共享服务账号以团队机器人身份回帖，输出 OpenTelemetry 指标。随包附带管理后台（见 7.3）。
 
-Both call the **same Python core** (`figwatch/` package): same trigger detection, same skill loader, same AI provider abstraction, same reply composer. A skill written by design ops runs bit-for-bit identically on a designer's laptop.
+两条路径共享**同一套 Python 内核**：触发词识别 → 技能自省 → 按需抓取资产 → AI 审查 → 回帖。同一个技能文件在两处行为一致——团队通常在 Desktop 上本地原型，成熟后把 `.md` 文件提升到 Server 供全员使用。
 
-**中 —** 早期原型想用一个二进制文件服务所有人——结果两头都做不好：个人设计师嫌部署太重，设计运营又嫌控制太少。我们拆分了产品形态，但保留了同一套逻辑：
-
-- **FigWatch Desktop**——macOS 菜单栏应用。由**设计师本人**在 2 分钟内完成安装，复用他已登录的 Claude Code（无需粘贴 API Key），轮询他个人关心的文件，以他自己的账号回帖。完全本地运行，除了 Figma 和 AI API 调用外，不向外发送任何数据。
-- **FigWatch Server**——由**设计运营 / 平台团队**部署的 Docker 镜像，服务整个组织。基于 Figma Webhook（零轮询延迟），通过 worker 池并发处理，使用共享服务账号，提供管理后台（见 7.3），输出 OpenTelemetry 指标到团队既有的观测体系。
-
-两者调用**同一套 Python 内核**（`figwatch/` 包）：相同的触发词识别、技能加载器、AI Provider 抽象、回复组装器。设计运营写的一个技能，在设计师笔记本上运行时，行为字节级一致。
-
-![Architecture — shared core, two deployment shells](placeholder://architecture-shared-core.png)
-*Placeholder: 架构图——共享内核 + 两层部署外壳*
-
-### 4.2 Not alternatives — they coexist / 不是二选一，而是共存
-
-**EN —** Desktop and Server serve different buyers but most teams run both: ops deploys the Server for org-wide coverage and canonical replies; designers install Desktop on top to audit drafts not yet in the shared workspace, using their own Claude Code quota. Skills are portable `.md` — prototype locally, promote to Server when mature.
-
-**中 —** Desktop 与 Server 面向不同买家，但团队往往两个都跑：设计运营部署 Server 覆盖全组织、统一回帖；设计师各自装 Desktop 用自己的 Claude Code 配额审查尚未进共享 workspace 的草稿。技能是可移植的 `.md` 文件，个人本地原型，成熟后由运营提升到 Server 全员可用。
-
-| | **Desktop** | **Server** |
-|---|---|---|
-| **Installs / 谁装** | Designer / 设计师 | Design ops / 设计运营 |
-| **Scope / 覆盖** | Their files / 个人文件 | Whole org / 全组织 |
-| **Trigger / 触发** | Poll / 轮询 | Webhook / 推送 |
-| **AI creds / AI 凭证** | Own Claude Code login / 自己的 Claude Code 登录 | Shared service key / 共享服务 Key |
-| **Replies as / 回帖身份** | The designer / 本人 | Team bot / 机器人 |
-| **Concurrency / 并发** | Serial / 串行 | Worker pool / worker 池 |
-| **Admin dashboard / 管理后台** | — | ✓ (§7.3) |
-| **Setup / 部署** | ~2 min / 约 2 分钟 | ~30 min / 约 30 分钟 |
-| **Feels like / 定位** | Personal assistant / 私人助理 | Design infrastructure / 设计基础设施 |
-
-![Adoption path — Desktop prototype → Server promotion](placeholder://adoption-path.png)
-*Placeholder: 采用路径——Desktop 原型 → 提升为 Server 全组织能力*
+![Solution architecture — two entry points, one core](placeholder://solution-architecture.png)
+*Placeholder: 架构图——两个入口共享同一内核*
 
 ---
 
