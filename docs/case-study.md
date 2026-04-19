@@ -168,14 +168,14 @@ Reply rewritten with severity-scored findings
 
 ## 07 · Interface Highlights / 界面重点
 
-### 7.1 Menu bar as a live status board / 菜单栏即实时看板
+### 7.1 Menu bar as a quick reference / 菜单栏即速查面板
 
-**EN —** A designer glances up; each watched file shows `LIVE`, `PROCESSING`, `REPLIED`, or `ERROR`. No dashboard. No browser tab.
+**EN —** The menu bar answers two questions a designer asks mid-work: *"which files am I watching?"* and *"what triggers can I use right now?"* Watched files list with one click to open in Figma; active triggers list with the skill name and source (built-in / team / personal). No status log, no dashboard — just "what's on" and "what I can type."
 
-**中 —** 抬眼瞥一下，每个被监听的文件状态一目了然：`LIVE`、`PROCESSING`、`REPLIED`、`ERROR`。不用打开后台，不用切浏览器。
+**中 —** 菜单栏只回答设计师工作时最常想问的两个问题：*"我在监听哪些文件？"* 和 *"我现在能用哪些触发词？"* 被监听文件一键跳转到 Figma；可用触发词列出技能名与来源（内置 / 团队 / 个人）。没有状态日志，也没有后台——只有"开着什么"与"能输入什么"。
 
-![Menu bar — watched files list with live statuses](placeholder://menu-bar-list.png)
-*Placeholder: 菜单栏——被监听文件与实时状态*
+![Menu bar — watched files and active triggers](placeholder://menu-bar-list.png)
+*Placeholder: 菜单栏——被监听文件 + 当前可用的触发词列表*
 
 ### 7.2 Onboarding as a trust-builder / 引导即信任建立
 
@@ -186,7 +186,16 @@ Reply rewritten with severity-scored findings
 ![Onboarding checklist — four verified steps](placeholder://onboarding.png)
 *Placeholder: 引导清单四步*
 
-### 7.3 Audit reply composition / 审查回复排版
+### 7.3 Admin dashboard for design ops / 面向设计运营的管理后台
+
+**EN —** Individual designers live in the menu bar; design ops live in the dashboard. A separate surface — shipped with the Docker server — gives leads a single view of **skill usage** (which triggers are used, by whom, how often) and **performance** (median audit time, success rate, provider cost, queue depth). Skills can be sorted by ROI: a `@tone` skill fired 400 times a week with a 98% success rate reads very differently from an `@i18n` skill fired 8 times with a 50% retry rate. The dashboard exists so design ops can *retire bad skills, promote good ones, and budget AI spend* — without reading logs.
+
+**中 —** 个人设计师住在菜单栏，设计运营住在 Dashboard。随 Docker 服务端一起发布的独立管理后台，向设计负责人提供一个统一视图：**技能使用情况**（哪些触发词被谁、以什么频率使用）和**性能指标**（审查耗时中位数、成功率、Provider 成本、队列深度）。技能可以按 ROI 排序：一周被调用 400 次、成功率 98% 的 `@tone`，和一周只用 8 次、重试率 50% 的 `@i18n`，一眼就能分辨。Dashboard 的价值在于——让设计运营可以*淘汰低效技能、推广高效技能、合理预算 AI 支出*，而不用翻日志。
+
+![Admin dashboard — skill usage + performance](placeholder://admin-dashboard.png)
+*Placeholder: 管理后台——技能使用与性能监控*
+
+### 7.4 Audit reply composition / 审查回复排版
 
 **EN —** Replies are structured: **Summary → Findings with severity (🔴 high / 🟡 medium / 🟢 nit) → Suggested fix**. Long threads collapse. Designers skim in 5 seconds.
 
