@@ -2,129 +2,123 @@
 
 How a Figma comment becomes an AI audit reply.
 
-## Producing an Audit
+## Audit Production
+
+A comment containing a trigger keyword (e.g. `@ux`, `@tone`) is matched to a **skill** — a markdown rubric that tells the AI what to evaluate and how. The skill declares what design data it needs, that data is fetched from Figma, and everything is assembled into a prompt for the AI provider.
 
 ```mermaid
 flowchart TD
-    %% ── Inputs ──────────────────────────────────────────
-    COMMENT["Figma Comment
-    ─────────────────
-    comment_id, message,
-    parent_id, node_id,
-    user_handle, file_key"]
+    COMMENT["💬 Figma Comment
+    ───────────────────
+    '@ux check the spacing
+    on this card layout'"]
 
-    TRIGGER_CFG["Trigger Config
-    ─────────────────
-    keyword → skill_ref
-    e.g. @ux → builtin:ux"]
+    COMMENT --> MATCH["Match trigger keyword"]
+    MATCH --> SKILL
 
-    %% ── Trigger matching ────────────────────────────────
-    COMMENT --> MATCH[match_trigger]
-    TRIGGER_CFG --> MATCH
-    MATCH -->|No keyword found| IGNORE([Ignored])
-    MATCH -->|Match| TM
+    SKILL["📋 Skill
+    ───────────────────
+    Evaluation rubric
+    written in markdown
 
-    TM["TriggerMatch
-    ─────────────────
-    trigger: Trigger
-    extra: reviewer context"]
+    e.g. builtin:ux uses
+    Nielsen's 10 Heuristics"]
 
-    %% ── Audit created ───────────────────────────────────
-    COMMENT --> AUDIT
-    TM --> AUDIT
-    AUDIT["Audit ∎ aggregate root
-    ──────────────────────
-    audit_id, comment,
-    trigger_match, status"]
+    SKILL --> INTROSPECT["Determine required data"]
 
-    %% ── Skill resolution ────────────────────────────────
-    AUDIT --> RESOLVE[Resolve skill_ref]
-    RESOLVE --> SKILL_FILE
+    INTROSPECT --> DATA
 
-    SKILL_FILE["skill.md
-    ─────────────────
-    evaluation rubric
-    + references/*.md"]
+    subgraph Design Data from Figma
+        DATA["What the skill asked for"]
 
-    %% ── Introspection ───────────────────────────────────
-    SKILL_FILE --> INTROSPECT[Introspect skill]
-    INTROSPECT --> REQ_DATA
+        SCREENSHOT["🖼️ Screenshot
+        Visual capture of the frame"]
 
-    REQ_DATA["required_data
-    ─────────────────
-    e.g. screenshot,
-    node_tree, text_nodes"]
+        NODE_TREE["🌳 Node Tree
+        Full layer hierarchy as JSON —
+        frame structure, auto-layout,
+        constraints, component instances"]
 
-    %% ── Figma data fetch ────────────────────────────────
-    REQ_DATA --> FETCH[Fetch from Figma API]
-    AUDIT --> FETCH
+        TEXT_NODES["📝 Text Nodes
+        Every text layer extracted
+        with its content and name"]
 
-    FETCH --> DESIGN_DATA
+        STYLES["🎨 Styles
+        Colour, typography, and
+        effect styles in the file"]
 
-    DESIGN_DATA["Design Data
-    ─────────────────
-    screenshot · node_tree
-    text_nodes · styles
-    components · variables
-    annotations · prototype_flows
-    dev_resources · file_structure"]
+        COMPONENTS["🧩 Components
+        Component definitions
+        used in the file"]
 
-    %% ── Prompt assembly ─────────────────────────────────
-    SKILL_FILE --> PROMPT[Build prompt]
-    DESIGN_DATA --> PROMPT
-    AUDIT --> PROMPT
+        VARIABLES["📐 Variables
+        Design tokens — spacing,
+        colour, and sizing values"]
 
-    PROMPT --> ASSEMBLED
+        ANNOTATIONS["📌 Annotations
+        Designer notes attached
+        to specific nodes"]
 
-    ASSEMBLED["Assembled Prompt
-    ─────────────────
-    skill instructions
-    + reference docs
-    + frame name
-    + trigger context
-    + design data
-    + output constraints"]
+        PROTOTYPES["🔗 Prototype Flows
+        Screen-to-screen navigation
+        connections and interactions"]
 
-    %% ── AI call ─────────────────────────────────────────
-    ASSEMBLED --> AI[AI Provider]
-    AI --> RAW[Raw reply text]
+        DEV_RESOURCES["🔧 Dev Resources
+        Links and assets attached
+        to nodes for developers"]
 
-    %% ── Post-processing ─────────────────────────────────
-    RAW --> CLEAN[clean_reply]
-    TRIGGER_CFG --> CLEAN
-    CLEAN --> REPLY
+        FILE_STRUCTURE["📂 File Structure
+        Top-level pages and
+        frame organisation"]
 
-    REPLY["Audit Reply
-    ─────────────────
-    🗣️ @ux Audit — Frame Name
+        DATA --- SCREENSHOT
+        DATA --- NODE_TREE
+        DATA --- TEXT_NODES
+        DATA --- STYLES
+        DATA --- COMPONENTS
+        DATA --- VARIABLES
+        DATA --- ANNOTATIONS
+        DATA --- PROTOTYPES
+        DATA --- DEV_RESOURCES
+        DATA --- FILE_STRUCTURE
+    end
 
-    plain-text evaluation
-    ≤4000 chars, no markdown,
-    trigger words stripped
+    SCREENSHOT --> PROMPT
+    NODE_TREE --> PROMPT
+    TEXT_NODES --> PROMPT
+    STYLES --> PROMPT
+    COMPONENTS --> PROMPT
+    VARIABLES --> PROMPT
+    ANNOTATIONS --> PROMPT
+    PROTOTYPES --> PROMPT
+    DEV_RESOURCES --> PROMPT
+    FILE_STRUCTURE --> PROMPT
+    SKILL --> PROMPT
 
-    — Provider Name"]
+    PROMPT["Assemble Prompt
+    ───────────────────
+    Skill rubric
+    + reference documents
+    + reviewer's extra context
+    + selected design data"]
 
-    %% ── Posted ──────────────────────────────────────────
-    REPLY --> POST[Post to Figma as comment reply]
+    PROMPT --> AI["AI Provider evaluates
+    against the skill rubric"]
 
-    %% ── Styling ─────────────────────────────────────────
-    classDef input fill:#e8f4fd,stroke:#4a90d9
-    classDef vo fill:#f0f0f0,stroke:#888
-    classDef process fill:#fff,stroke:#333
-    classDef output fill:#e8fde8,stroke:#4a9
-    classDef discard fill:#fafafa,stroke:#ccc,color:#999
+    AI --> REPLY
 
-    class COMMENT,TRIGGER_CFG,SKILL_FILE,DESIGN_DATA input
-    class TM,REQ_DATA,ASSEMBLED vo
-    class MATCH,RESOLVE,INTROSPECT,FETCH,PROMPT,AI,CLEAN,POST process
-    class AUDIT,REPLY output
-    class IGNORE discard
+    REPLY["💬 Audit Reply
+    ───────────────────
+    Plain-text evaluation
+    posted as a Figma
+    comment reply"]
 ```
 
-### Key concepts
+### Builtin skills
 
-- **Trigger matching** is a pure function — lowercase keyword search against the comment message. The text after the keyword becomes `extra` context passed to the AI.
-- **Skill introspection** determines what Figma data the skill needs. Builtin skills have hardcoded requirements; custom skills are analysed by a cheap AI model (Haiku/Flash) and cached by file mtime.
-- **Design data** is fetched in parallel from the Figma REST API (up to 3 concurrent requests). Screenshots try progressively smaller sizes until under 3.75 MB.
-- **Prompt assembly** embeds all data inline for API providers, or passes file paths for Claude CLI. Node tree JSON is capped at 40K characters.
-- **clean_reply** strips trigger keywords from the output (prevents feedback loops) and truncates to 4900 characters (Figma comment limit).
+| Skill | Trigger | What it evaluates | Data it needs |
+|-------|---------|-------------------|---------------|
+| **UX Heuristic Review** | `@ux` | Nielsen's 10 Usability Heuristics — cross-references the visual screenshot against the structural node tree | Screenshot, Node Tree |
+| **Tone of Voice Review** | `@tone` | Copy against locale-specific brand guidelines (DE, FR, NL, Benelux) with reference docs per locale | Node Tree, Text Nodes |
+
+Custom skills can be added as markdown files. Each skill is introspected to determine which design data types it requires — only the data it asks for is fetched.
