@@ -12,6 +12,7 @@ class ClaudeCLIProvider:
     inline_files = False
 
     def __init__(self, model: str, claude_path: str, skill_dir: str = ''):
+        self.model_id = model
         self._model = model
         self._claude_path = claude_path
         self._skill_dir = skill_dir
