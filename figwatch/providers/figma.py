@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import socket
 import tempfile
 import time
 import urllib.error
@@ -49,15 +50,19 @@ def figma_delete(path, pat):
     _make_request(f'{FIGMA_API}{path}', pat, method='DELETE')
 
 
-def figma_get_retry(path, pat, retries=1):
-    """GET a Figma API endpoint with retry on 429. Returns parsed JSON or None."""
+def figma_get_retry(path, pat, retries=1, timeout=15):
+    """GET a Figma API endpoint with retry on 429. Returns parsed JSON or None.
+
+    Raises socket.timeout / TimeoutError on timeout so callers can distinguish
+    slow responses from other failures.
+    """
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(
                 f'{FIGMA_API}{path}',
                 headers={'X-Figma-Token': pat},
             )
-            with urllib.request.urlopen(req, timeout=15) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt < retries:
@@ -74,6 +79,10 @@ def figma_get_retry(path, pat, retries=1):
             logger.warning('figma API error',
                            extra={'path': path, 'status': e.code})
             return None
+        except (socket.timeout, TimeoutError):
+            logger.warning('figma API timeout',
+                           extra={'path': path, 'timeout': timeout})
+            raise
         except Exception as e:
             logger.warning('figma API call failed',
                            extra={'path': path, 'error': str(e)})
@@ -152,6 +161,9 @@ def fetch_screenshot(file_key, node_id, pat):
 
     Tries progressively smaller PNG scales then falls back to JPEG. Returns None
     if nothing fits within 3.75 MB (safe ceiling before base64 hits the 5 MB API limit).
+
+    Timeouts abort immediately — retrying at smaller scales won't help when
+    Figma is slow to render (see #37).
     """
     enc_id = urllib_quote(node_id)
     attempts = [('png', 1), ('png', 0.5), ('jpg', 1), ('jpg', 0.5), ('jpg', 0.25)]
@@ -163,7 +175,9 @@ def fetch_screenshot(file_key, node_id, pat):
         )
         try:
             data = figma_get_retry(
-                f'/images/{file_key}?ids={enc_id}&scale={scale}&format={fmt}', pat
+                f'/images/{file_key}?ids={enc_id}&scale={scale}&format={fmt}',
+                pat,
+                timeout=45,
             )
             if not data or data.get('err') or data.get('status') == 400:
                 continue
@@ -177,6 +191,13 @@ def fetch_screenshot(file_key, node_id, pat):
             with open(out_path, 'wb') as f:
                 f.write(img_bytes)
             return out_path
+        except (socket.timeout, TimeoutError):
+            logger.warning(
+                'screenshot render timed out — aborting fallback chain',
+                extra={'file_key': file_key, 'node_id': node_id,
+                       'format': fmt, 'scale': scale},
+            )
+            return None
         except Exception:
             continue
     return None
