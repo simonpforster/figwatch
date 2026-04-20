@@ -4,10 +4,10 @@ from figwatch.providers.ai import with_retry
 
 
 class GeminiProvider:
-    name = 'Gemini'
     inline_files = True
 
     def __init__(self, model_name: str, api_key: str, rate_limiter=None):
+        self.model_id = model_name
         self._model_name = model_name
         self._api_key = api_key
         self._rate_limiter = rate_limiter

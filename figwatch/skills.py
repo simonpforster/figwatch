@@ -322,7 +322,7 @@ def execute_skill(audit, *, config, design_repo):
     provider = make_provider(model, claude_path, skill_dir=skill_dir)
     logger.debug(
         'calling ai provider',
-        extra={'provider': provider.name, 'frame': frame_name},
+        extra={'provider': provider.model_id, 'frame': frame_name},
     )
     prompt = _build_prompt(
         audit, skill_content, refs_section, data, tree_data, frame_name,
@@ -332,7 +332,7 @@ def execute_skill(audit, *, config, design_repo):
     try:
         reply = provider.call(prompt, data.get('screenshot'))
         header = f'\U0001f5e3\ufe0f {trigger_kw} Audit \u2014 {frame_name}'
-        return f'{header}\n\n{reply}\n\n\u2014 {provider.name}'
+        return f'{header}\n\n{reply}\n\n\u2014 {provider.model_id}'
     finally:
         for key in ['screenshot', 'node_tree']:
             p = data.get(key)
