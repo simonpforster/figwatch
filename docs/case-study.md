@@ -134,8 +134,9 @@ The cumulative effect: FigWatch reads like a coworker who happens to be fast, no
 
 **中 —** 只有触发词太粗暴。设计师可以在评论里追加自由文本作为上下文——"`@ux` 重点看空状态"、"`@tone` 这是给高端付费用户的"、"`@a11y` 忽略占位文字，只审查按钮"。FigWatch 会把这段上下文直接注入审查 prompt，让回复收缩范围、调整语气、或跳过无关区域。同一个触发词，不同上下文，得到不同答案。
 
-![Context-aware trigger — same @ux, different scope](placeholder://context-aware-trigger.png)
-*Placeholder: 同一个 `@ux`，追加不同上下文得到不同审查结果*
+![Context-aware trigger — same @ux, different scope](assets/context-aware-trigger.svg)
+*Same `@ux` trigger, two different context strings → two different audits.*
+*同一个 `@ux`，追加不同上下文 → 得到不同审查。*
 
 ---
 
@@ -217,14 +218,14 @@ Reply rewritten with severity-scored findings
 - **30–120 s → ~15 s** average first-round audit time per frame.
 - **2 built-in skills** shipped (`@tone`, `@ux`) · **3 community skills** contributed in the first month (`@a11y`, `@i18n`, `@copy-length`).
 - **Zero** additional dashboards introduced into the design workflow.
-- **5 locales** supported at launch with team-owned tone rules.
+- **Zero new UI patterns** introduced — `@` mention is the only input surface designers have to learn.
 
 **中 —**
 
 - 单帧首轮审查耗时从 **30–120 秒 → 约 15 秒**。
 - 上线时内置 **2 条审查技能**（`@tone`、`@ux`）；上线首月社区贡献 **3 条**（`@a11y`、`@i18n`、`@copy-length`）。
 - 设计工作流里**没有**新增任何后台面板。
-- 首发支持 **5 个地区**，Tone 规则完全由团队掌握。
+- **没有引入任何新的交互范式**——`@` 是设计师需要学习的唯一输入面。
 
 ![Metrics — before / after timeline per frame](placeholder://metrics-before-after.png)
 *Placeholder: 单帧审查耗时前后对比*
