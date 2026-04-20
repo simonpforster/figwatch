@@ -7,7 +7,6 @@ services:
       # Required
       - FIGMA_PAT=${FIGMA_PAT}
       - FIGWATCH_WEBHOOK_PASSCODE=${FIGWATCH_WEBHOOK_PASSCODE}
-      - FIGWATCH_TEAM_ID=${FIGWATCH_TEAM_ID}
       # AI provider — set one (or both if you switch models)
       - ANTHROPIC_API_KEY
       - GOOGLE_API_KEY
