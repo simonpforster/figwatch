@@ -24,6 +24,7 @@ class QueuedItem:
     enqueued_at: float = field(default_factory=time.monotonic)
     attempt: int = 1
     waited_seconds: float = 0.0
+    trace_context: dict = field(default_factory=dict)
 
 
 @dataclass

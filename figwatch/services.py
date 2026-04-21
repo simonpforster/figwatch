@@ -7,6 +7,7 @@ from typing import Optional
 from figwatch.domain import Audit, AuditCompleted, AuditFailed, AuditResult
 from figwatch.ports import CommentRepository, DesignDataRepository
 from figwatch.processor import clean_reply
+from figwatch.tracing import get_tracer
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +68,15 @@ class AuditService:
         return self.post_ack(audit, message)
 
     def post_reply(self, audit: Audit, message: str) -> None:
-        self._comments.post_reply(
-            audit.comment.file_key,
-            audit.reply_to_id,
-            message,
-        )
+        tracer = get_tracer()
+        with tracer.start_as_current_span('figma.post_reply', attributes={
+            'figma.file_key': audit.comment.file_key,
+        }):
+            self._comments.post_reply(
+                audit.comment.file_key,
+                audit.reply_to_id,
+                message,
+            )
 
     def execute(self, audit: Audit) -> str:
         """Run skill for an audit. Returns cleaned reply string.

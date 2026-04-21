@@ -67,6 +67,7 @@ from figwatch.metrics import (
     init_metrics, record_queue_change, record_token_expired,
     record_webhook_received,
 )
+from figwatch.tracing import get_tracer, init_tracing
 from figwatch.providers.ai import CLAUDE_API_MODELS, GEMINI_MODELS
 from figwatch.providers.figma import (
     FigmaCommentRepository, FigmaDesignDataRepository, FigmaRateLimiter,
@@ -192,6 +193,16 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
         ack_id = queued.ack_id
         run_started_at = time.monotonic()
 
+        # Restore trace context propagated from the webhook handler thread.
+        otel_token = None
+        try:
+            from opentelemetry import context as otel_context
+            from opentelemetry.propagators.textmap import extract
+            ctx = extract(queued.trace_context)
+            otel_token = otel_context.attach(ctx)
+        except ImportError:
+            pass
+
         token = set_audit_context(
             audit=queued.audit_id,
             trigger=trigger_kw,
@@ -199,7 +210,14 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
             file=audit.comment.file_key,
             attempt=queued.attempt,
         )
+        tracer = get_tracer()
         try:
+          with tracer.start_as_current_span('audit', attributes={
+              'audit.id': queued.audit_id,
+              'audit.file_key': audit.comment.file_key,
+              'audit.node_id': audit.comment.node_id,
+              'audit.trigger': trigger_kw,
+          }) as span:
             record_queue_change(-1)
             stats = work_queue.stats()
             logger.info(
@@ -226,6 +244,7 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
                 except FigmaTokenExpired as err:
                     last_err = err
                     record_token_expired()
+                    span.record_exception(err)
                     logger.error(
                         'Figma token expired — skipping retries',
                         extra={'attempt': attempt + 1},
@@ -268,6 +287,11 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
                     },
                 )
             else:
+                try:
+                    from opentelemetry.trace import StatusCode
+                    span.set_status(StatusCode.ERROR, str(last_err))
+                except ImportError:
+                    pass
                 audit_service.delete_ack(audit, ack_id)
                 try:
                     audit_service.post_reply(
@@ -295,6 +319,12 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
         finally:
             work_queue.task_done()
             reset_audit_context(token)
+            if otel_token is not None:
+                try:
+                    from opentelemetry import context as otel_context
+                    otel_context.detach(otel_token)
+                except ImportError:
+                    pass
 
 
 # ── HTTP handler ───────────────────────────────────────────────────────
@@ -404,10 +434,18 @@ def _make_handler(pat, passcode, allowed_file_keys,
 
             ack_id = audit_service.post_ack(audit, queue_msg)
 
+            trace_ctx = {}
+            try:
+                from opentelemetry.propagators.textmap import inject
+                inject(trace_ctx)
+            except ImportError:
+                pass
+
             queued = QueuedItem(
                 audit=audit,
                 ack_id=ack_id,
                 audit_id=audit_id,
+                trace_context=trace_ctx,
             )
             work_queue.put(queued)
             record_queue_change(1)
@@ -547,6 +585,7 @@ def main():
         sys.exit(1)
 
     init_metrics()
+    init_tracing()
 
     trigger_config = load_trigger_config(skills_dir)
     triggers_str = ', '.join(t.get('trigger', '') for t in trigger_config)
