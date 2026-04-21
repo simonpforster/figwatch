@@ -1,9 +1,11 @@
 """Skill discovery, introspection, prompt building, and execution."""
 
+import importlib.resources
 import json
 import logging
 import os
 import re
+import tempfile
 from pathlib import Path
 
 from figwatch.providers.ai import make_provider, GEMINI_MODELS, CLAUDE_API_MODELS
@@ -16,6 +18,45 @@ logger = logging.getLogger(__name__)
 
 _HOME = Path.home()
 _BUNDLED_SKILLS = Path(__file__).parent / 'skills'
+
+
+def _extract_bundled_skills():
+    """Extract bundled skills to a temp dir if running from a zip (py2app).
+
+    Returns the path to use for bundled skills — either the original on-disk
+    path or the extracted temp directory.
+    """
+    if _BUNDLED_SKILLS.is_dir():
+        return _BUNDLED_SKILLS
+
+    # Running from zip — extract to a persistent temp dir
+    extract_dir = Path(tempfile.gettempdir()) / 'figwatch-skills'
+    if extract_dir.is_dir():
+        return extract_dir
+
+    try:
+        pkg = importlib.resources.files('figwatch') / 'skills'
+        for skill_name in ('ux', 'tone'):
+            skill_pkg = pkg / skill_name
+            for item in skill_pkg.iterdir():
+                if item.is_file():
+                    dest = extract_dir / skill_name / item.name
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(item.read_bytes())
+                elif item.name == 'references':
+                    for ref in item.iterdir():
+                        if ref.is_file():
+                            dest = extract_dir / skill_name / 'references' / ref.name
+                            dest.parent.mkdir(parents=True, exist_ok=True)
+                            dest.write_bytes(ref.read_bytes())
+    except Exception as e:
+        logger.warning('Failed to extract bundled skills: %s', e)
+        return _BUNDLED_SKILLS
+
+    return extract_dir
+
+
+_RESOLVED_BUNDLED_SKILLS = _extract_bundled_skills()
 
 # Node tree is embedded inline for API providers — cap to avoid token limit blowout.
 _NODE_TREE_CHAR_LIMIT = 40_000
@@ -56,7 +97,7 @@ def find_skills():
         (_HOME / '.claude' / 'skills', False),
         (Path(os.getcwd()) / '.claude' / 'skills', False),
         (_HOME / '.figwatch' / 'skills', False),
-        (_BUNDLED_SKILLS, True),
+        (_RESOLVED_BUNDLED_SKILLS, True),
     ]
 
     for base_dir, builtin in search_dirs:
@@ -82,7 +123,7 @@ def find_skills():
 
 def _resolve_builtin_skill(skill_ref):
     name = skill_ref.replace('builtin:', '')
-    for base in [_BUNDLED_SKILLS, _HOME / '.claude' / 'skills']:
+    for base in [_RESOLVED_BUNDLED_SKILLS, _HOME / '.claude' / 'skills']:
         for fname in ['skill.md', 'SKILL.md']:
             path = base / name / fname
             if path.exists():

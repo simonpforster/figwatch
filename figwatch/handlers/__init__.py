@@ -16,11 +16,23 @@ def strip_markdown(text):
 
 
 def subprocess_env():
-    """Augmented PATH for subprocess calls (covers Homebrew and common install locations)."""
-    return {
+    """Augmented env for subprocess calls (covers Homebrew and common install locations).
+
+    py2app bundles launch with a minimal environment, so we ensure key
+    variables are present for Node.js (Claude CLI) and general subprocess use.
+    """
+    env = {
         **os.environ,
+        'HOME': os.path.expanduser('~'),
         'PATH': f"/opt/homebrew/bin:/usr/local/bin:{os.environ.get('PATH', '/usr/bin:/bin')}",
     }
+    # Node.js inside py2app can't verify SSL certs without this
+    try:
+        import certifi
+        env.setdefault('NODE_EXTRA_CA_CERTS', certifi.where())
+    except ImportError:
+        pass
+    return env
 
 
 def parse_claude_output(result, fallback_msg='Unable to generate evaluation.'):

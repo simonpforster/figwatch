@@ -130,4 +130,5 @@ def make_provider(model: str, claude_path: str, *, skill_dir: str = '') -> AIPro
             os.environ.get('ANTHROPIC_API_KEY', ''),
             rate_limiter=get_anthropic_limiter(),
         )
-    return ClaudeCLIProvider(model, claude_path, skill_dir)
+    display_name = CLAUDE_API_MODELS.get(model, model)
+    return ClaudeCLIProvider(display_name, claude_path, skill_dir)

@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import socket
+import ssl
 import tempfile
 import time
 import urllib.error
@@ -16,6 +17,18 @@ from figwatch.tracing import TracedThreadPoolExecutor, get_tracer
 logger = logging.getLogger(__name__)
 
 FIGMA_API = 'https://api.figma.com/v1'
+
+
+def _ssl_context():
+    """Build SSL context. Uses certifi CA bundle if available, else system default."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
+_SSL_CTX = _ssl_context()
 
 
 class FigmaTokenExpired(Exception):
@@ -129,7 +142,7 @@ def _make_request(url, pat, method='GET', body=None):
         data = json.dumps(body).encode()
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=15, context=_SSL_CTX) as r:
             if method == 'DELETE':
                 return None
             return json.loads(r.read())
@@ -190,7 +203,7 @@ def figma_get_retry(path, pat, retries=1, timeout=15, limiter=None):
                     f'{FIGMA_API}{path}',
                     headers={'X-Figma-Token': pat},
                 )
-                with urllib.request.urlopen(req, timeout=timeout) as r:
+                with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as r:
                     span.set_attribute('figma.status_code', r.status)
                     span.set_attribute('figma.retry_count', attempt)
                     return json.loads(r.read())
@@ -330,7 +343,7 @@ def fetch_screenshot(file_key, node_id, pat, limiter=None):
                 url = (data.get('images') or {}).get(node_id)
                 if not url:
                     continue
-                with urllib.request.urlopen(url, timeout=30) as r:
+                with urllib.request.urlopen(url, timeout=30, context=_SSL_CTX) as r:
                     img_bytes = r.read()
                 if len(img_bytes) > _MAX_IMAGE_BYTES:
                     continue
