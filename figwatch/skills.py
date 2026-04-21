@@ -10,6 +10,7 @@ from figwatch.providers.ai import make_provider, GEMINI_MODELS, CLAUDE_API_MODEL
 from figwatch.providers.ai.gemini import GeminiProvider
 from figwatch.providers.ai.anthropic import AnthropicProvider
 from figwatch.providers.ai.claude_cli import ClaudeCLIProvider
+from figwatch.tracing import get_tracer
 
 logger = logging.getLogger(__name__)
 
@@ -186,9 +187,14 @@ def introspect_skill(skill_path, claude_path, model=None):
 
 
 def _get_introspection(skill_ref, skill_path, claude_path, model):
-    if skill_ref in _BUILTIN_INTROSPECTION:
-        return _BUILTIN_INTROSPECTION[skill_ref]
-    return introspect_skill(skill_path, claude_path, model)
+    tracer = get_tracer()
+    with tracer.start_as_current_span('skill.introspect', attributes={
+        'skill.name': skill_ref,
+        'skill.builtin': skill_ref in _BUILTIN_INTROSPECTION,
+    }):
+        if skill_ref in _BUILTIN_INTROSPECTION:
+            return _BUILTIN_INTROSPECTION[skill_ref]
+        return introspect_skill(skill_path, claude_path, model)
 
 
 # ── Prompt builder ────────────────────────────────────────────────────
@@ -333,8 +339,19 @@ def execute_skill(audit, *, config, design_repo):
         inline_files=provider.inline_files, config=config,
     )
 
+    tracer = get_tracer()
     try:
-        reply = provider.call(prompt, data.get('screenshot'))
+        with tracer.start_as_current_span('skill.execute', attributes={
+            'skill.name': skill_ref,
+            'skill.builtin': skill_ref.startswith('builtin:'),
+            'ai.provider': type(provider).__name__,
+            'ai.model': provider.model_id,
+        }) as span:
+            reply = provider.call(prompt, data.get('screenshot'))
+            if hasattr(provider, 'last_token_usage'):
+                usage = provider.last_token_usage
+                if usage:
+                    span.set_attribute('ai.tokens', usage)
         header = f'\U0001f5e3\ufe0f {trigger_kw} Audit \u2014 {frame_name}'
         return f'{header}\n\n{reply}\n\n\u2014 {provider.model_id}'
     finally:

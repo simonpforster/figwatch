@@ -10,9 +10,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
-
 from figwatch.providers.ai.rate_limit import TokenBucket
+from figwatch.tracing import TracedThreadPoolExecutor, get_tracer
 
 logger = logging.getLogger(__name__)
 
@@ -178,44 +177,57 @@ def figma_get_retry(path, pat, retries=1, timeout=15, limiter=None):
     If *limiter* is provided, acquires from the appropriate tier bucket before
     making the request.
     """
-    if limiter:
-        limiter.acquire(path)
-    for attempt in range(retries + 1):
-        try:
-            req = urllib.request.Request(
-                f'{FIGMA_API}{path}',
-                headers={'X-Figma-Token': pat},
-            )
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            _check_token_expired(e)
-            if e.code == 429 and attempt < retries:
-                try:
-                    wait = int(e.headers.get('Retry-After', '0') or 0)
-                except Exception:
-                    wait = 0
-                wait = max(wait, 2)
-                if limiter:
-                    limiter.backoff(path, wait)
-                logger.warning(
-                    'figma 429 — retrying',
-                    extra={'path': path, 'retry_in_seconds': wait},
+    tracer = get_tracer()
+    with tracer.start_as_current_span('figma.api_call', attributes={
+        'figma.endpoint': path,
+        'figma.rate_limit_tier': endpoint_tier(path),
+    }) as span:
+        if limiter:
+            limiter.acquire(path)
+        for attempt in range(retries + 1):
+            try:
+                req = urllib.request.Request(
+                    f'{FIGMA_API}{path}',
+                    headers={'X-Figma-Token': pat},
                 )
-                time.sleep(wait)
-                continue
-            logger.warning('figma API error',
-                           extra={'path': path, 'status': e.code})
-            return None
-        except (socket.timeout, TimeoutError):
-            logger.warning('figma API timeout',
-                           extra={'path': path, 'timeout': timeout})
-            raise
-        except Exception as e:
-            logger.warning('figma API call failed',
-                           extra={'path': path, 'error': str(e)})
-            return None
-    return None
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    span.set_attribute('figma.status_code', r.status)
+                    span.set_attribute('figma.retry_count', attempt)
+                    return json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                span.set_attribute('figma.status_code', e.code)
+                span.set_attribute('figma.retry_count', attempt)
+                _check_token_expired(e)
+                if e.code == 429 and attempt < retries:
+                    try:
+                        wait = int(e.headers.get('Retry-After', '0') or 0)
+                    except Exception:
+                        wait = 0
+                    wait = max(wait, 2)
+                    if limiter:
+                        limiter.backoff(path, wait)
+                    logger.warning(
+                        'figma 429 — retrying',
+                        extra={'path': path, 'retry_in_seconds': wait},
+                    )
+                    time.sleep(wait)
+                    continue
+                logger.warning('figma API error',
+                               extra={'path': path, 'status': e.code})
+                return None
+            except (socket.timeout, TimeoutError):
+                span.set_attribute('figma.retry_count', attempt)
+                span.record_exception(socket.timeout('timeout'))
+                logger.warning('figma API timeout',
+                               extra={'path': path, 'timeout': timeout})
+                raise
+            except Exception as e:
+                span.set_attribute('figma.retry_count', attempt)
+                span.record_exception(e)
+                logger.warning('figma API call failed',
+                               extra={'path': path, 'error': str(e)})
+                return None
+        return None
 
 
 # ── Node data extraction ──────────────────────────────────────────────
@@ -293,62 +305,72 @@ def fetch_screenshot(file_key, node_id, pat, limiter=None):
     Timeouts abort immediately — retrying at smaller scales won't help when
     Figma is slow to render (see #37).
     """
-    enc_id = urllib_quote(node_id)
-    attempts = [('png', 1), ('png', 0.5), ('jpg', 1), ('jpg', 0.5), ('jpg', 0.25)]
+    tracer = get_tracer()
+    with tracer.start_as_current_span('figma.screenshot', attributes={
+        'figma.file_key': file_key,
+        'figma.node_id': node_id,
+    }):
+        enc_id = urllib_quote(node_id)
+        attempts = [('png', 1), ('png', 0.5), ('jpg', 1), ('jpg', 0.5), ('jpg', 0.25)]
 
-    for fmt, scale in attempts:
-        out_path = os.path.join(
-            tempfile.gettempdir(),
-            f'figwatch-screenshot-{node_id.replace(":", "-")}.{fmt}',
-        )
-        try:
-            data = figma_get_retry(
-                f'/images/{file_key}?ids={enc_id}&scale={scale}&format={fmt}',
-                pat,
-                timeout=45,
-                limiter=limiter,
+        for fmt, scale in attempts:
+            out_path = os.path.join(
+                tempfile.gettempdir(),
+                f'figwatch-screenshot-{node_id.replace(":", "-")}.{fmt}',
             )
-            if not data or data.get('err') or data.get('status') == 400:
+            try:
+                data = figma_get_retry(
+                    f'/images/{file_key}?ids={enc_id}&scale={scale}&format={fmt}',
+                    pat,
+                    timeout=45,
+                    limiter=limiter,
+                )
+                if not data or data.get('err') or data.get('status') == 400:
+                    continue
+                url = (data.get('images') or {}).get(node_id)
+                if not url:
+                    continue
+                with urllib.request.urlopen(url, timeout=30) as r:
+                    img_bytes = r.read()
+                if len(img_bytes) > _MAX_IMAGE_BYTES:
+                    continue
+                with open(out_path, 'wb') as f:
+                    f.write(img_bytes)
+                return out_path
+            except (socket.timeout, TimeoutError):
+                logger.warning(
+                    'screenshot render timed out — aborting fallback chain',
+                    extra={'file_key': file_key, 'node_id': node_id,
+                           'format': fmt, 'scale': scale},
+                )
+                return None
+            except Exception:
                 continue
-            url = (data.get('images') or {}).get(node_id)
-            if not url:
-                continue
-            with urllib.request.urlopen(url, timeout=30) as r:
-                img_bytes = r.read()
-            if len(img_bytes) > _MAX_IMAGE_BYTES:
-                continue
-            with open(out_path, 'wb') as f:
-                f.write(img_bytes)
-            return out_path
-        except (socket.timeout, TimeoutError):
-            logger.warning(
-                'screenshot render timed out — aborting fallback chain',
-                extra={'file_key': file_key, 'node_id': node_id,
-                       'format': fmt, 'scale': scale},
-            )
-            return None
-        except Exception:
-            continue
-    return None
+        return None
 
 
 def fetch_node_tree(file_key, node_id, pat, limiter=None):
     """Fetch the full node tree for a Figma node. Returns (file_path, parsed_data) or (None, None)."""
-    enc_id = urllib_quote(node_id)
-    try:
-        data = figma_get_retry(f'/files/{file_key}/nodes?ids={enc_id}&depth=100', pat, limiter=limiter)
-        node = data.get('nodes', {}).get(node_id, {}).get('document') if data else None
-        if not node:
+    tracer = get_tracer()
+    with tracer.start_as_current_span('figma.node_tree', attributes={
+        'figma.file_key': file_key,
+        'figma.node_id': node_id,
+    }):
+        enc_id = urllib_quote(node_id)
+        try:
+            data = figma_get_retry(f'/files/{file_key}/nodes?ids={enc_id}&depth=100', pat, limiter=limiter)
+            node = data.get('nodes', {}).get(node_id, {}).get('document') if data else None
+            if not node:
+                return None, None
+            out_path = os.path.join(
+                tempfile.gettempdir(),
+                f'figwatch-tree-{node_id.replace(":", "-")}.json',
+            )
+            with open(out_path, 'w', encoding='utf-8') as f:
+                json.dump(node, f, indent=2)
+            return out_path, node
+        except Exception:
             return None, None
-        out_path = os.path.join(
-            tempfile.gettempdir(),
-            f'figwatch-tree-{node_id.replace(":", "-")}.json',
-        )
-        with open(out_path, 'w', encoding='utf-8') as f:
-            json.dump(node, f, indent=2)
-        return out_path, node
-    except Exception:
-        return None, None
 
 
 def fetch_figma_data(required_data, file_key, node_id, pat, limiter=None):
@@ -356,56 +378,61 @@ def fetch_figma_data(required_data, file_key, node_id, pat, limiter=None):
 
     Returns (dict[data_type -> value], tree_data).
     """
-    result = {}
-    enc_id = urllib_quote(node_id)
-    tree_data = None
+    tracer = get_tracer()
+    with tracer.start_as_current_span('figma.fetch_data', attributes={
+        'figma.file_key': file_key,
+        'figma.node_id': node_id,
+    }):
+        result = {}
+        enc_id = urllib_quote(node_id)
+        tree_data = None
 
-    futures = {}
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        if 'screenshot' in required_data:
-            futures['screenshot'] = pool.submit(fetch_screenshot, file_key, node_id, pat, limiter=limiter)
-        needs_tree = any(k in required_data for k in ('node_tree', 'text_nodes', 'annotations', 'prototype_flows'))
-        if needs_tree:
-            futures['_tree'] = pool.submit(fetch_node_tree, file_key, node_id, pat, limiter=limiter)
-        if 'dev_resources' in required_data:
-            futures['dev_resources'] = pool.submit(
-                figma_get_retry, f'/files/{file_key}/dev_resources?node_ids={enc_id}', pat, limiter=limiter
-            )
-        if 'variables_local' in required_data:
-            futures['variables_local'] = pool.submit(
-                figma_get_retry, f'/files/{file_key}/variables/local', pat, limiter=limiter
-            )
-        if 'variables_published' in required_data:
-            futures['variables_published'] = pool.submit(
-                figma_get_retry, f'/files/{file_key}/variables/published', pat, limiter=limiter
-            )
-        if 'styles' in required_data:
-            futures['styles'] = pool.submit(figma_get_retry, f'/files/{file_key}/styles', pat, limiter=limiter)
-        if 'components' in required_data:
-            futures['components'] = pool.submit(figma_get_retry, f'/files/{file_key}/components', pat, limiter=limiter)
-        if 'file_structure' in required_data:
-            futures['file_structure'] = pool.submit(figma_get_retry, f'/files/{file_key}?depth=2', pat, limiter=limiter)
+        futures = {}
+        with TracedThreadPoolExecutor(max_workers=3) as pool:
+            if 'screenshot' in required_data:
+                futures['screenshot'] = pool.submit(fetch_screenshot, file_key, node_id, pat, limiter=limiter)
+            needs_tree = any(k in required_data for k in ('node_tree', 'text_nodes', 'annotations', 'prototype_flows'))
+            if needs_tree:
+                futures['_tree'] = pool.submit(fetch_node_tree, file_key, node_id, pat, limiter=limiter)
+            if 'dev_resources' in required_data:
+                futures['dev_resources'] = pool.submit(
+                    figma_get_retry, f'/files/{file_key}/dev_resources?node_ids={enc_id}', pat, limiter=limiter
+                )
+            if 'variables_local' in required_data:
+                futures['variables_local'] = pool.submit(
+                    figma_get_retry, f'/files/{file_key}/variables/local', pat, limiter=limiter
+                )
+            if 'variables_published' in required_data:
+                futures['variables_published'] = pool.submit(
+                    figma_get_retry, f'/files/{file_key}/variables/published', pat, limiter=limiter
+                )
+            if 'styles' in required_data:
+                futures['styles'] = pool.submit(figma_get_retry, f'/files/{file_key}/styles', pat, limiter=limiter)
+            if 'components' in required_data:
+                futures['components'] = pool.submit(figma_get_retry, f'/files/{file_key}/components', pat, limiter=limiter)
+            if 'file_structure' in required_data:
+                futures['file_structure'] = pool.submit(figma_get_retry, f'/files/{file_key}?depth=2', pat, limiter=limiter)
 
-        for key, future in futures.items():
-            try:
-                result[key] = future.result()
-            except Exception:
-                result[key] = None
+            for key, future in futures.items():
+                try:
+                    result[key] = future.result()
+                except Exception:
+                    result[key] = None
 
-    tree_result = result.pop('_tree', None)
-    if tree_result:
-        tree_path, tree_data = tree_result
-        result['node_tree'] = tree_path
+        tree_result = result.pop('_tree', None)
+        if tree_result:
+            tree_path, tree_data = tree_result
+            result['node_tree'] = tree_path
 
-    if tree_data:
-        if 'text_nodes' in required_data:
-            result['text_nodes'] = extract_text_from_node(tree_data)
-        if 'prototype_flows' in required_data:
-            result['prototype_flows'] = _extract_prototype_flows(tree_data)
-        if 'annotations' in required_data:
-            result['annotations'] = _extract_annotations(tree_data)
+        if tree_data:
+            if 'text_nodes' in required_data:
+                result['text_nodes'] = extract_text_from_node(tree_data)
+            if 'prototype_flows' in required_data:
+                result['prototype_flows'] = _extract_prototype_flows(tree_data)
+            if 'annotations' in required_data:
+                result['annotations'] = _extract_annotations(tree_data)
 
-    return result, tree_data
+        return result, tree_data
 
 
 # ── Repository implementations ───────────────────────────────────────

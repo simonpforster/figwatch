@@ -67,6 +67,7 @@ from figwatch.metrics import (
     init_metrics, record_queue_change, record_token_expired,
     record_webhook_received,
 )
+from figwatch.tracing import get_tracer, init_tracing
 from figwatch.providers.ai import CLAUDE_API_MODELS, GEMINI_MODELS
 from figwatch.providers.figma import (
     FigmaCommentRepository, FigmaDesignDataRepository, FigmaRateLimiter,
@@ -192,6 +193,15 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
         ack_id = queued.ack_id
         run_started_at = time.monotonic()
 
+        # Restore trace context propagated from the webhook handler thread.
+        otel_token = None
+        try:
+            from opentelemetry import context as otel_context
+            if queued.trace_context is not None:
+                otel_token = otel_context.attach(queued.trace_context)
+        except ImportError:
+            pass
+
         token = set_audit_context(
             audit=queued.audit_id,
             trigger=trigger_kw,
@@ -199,7 +209,14 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
             file=audit.comment.file_key,
             attempt=queued.attempt,
         )
+        tracer = get_tracer()
         try:
+          with tracer.start_as_current_span('audit', attributes={
+              'audit.id': queued.audit_id,
+              'audit.file_key': audit.comment.file_key,
+              'audit.node_id': audit.comment.node_id,
+              'audit.trigger': trigger_kw,
+          }) as span:
             record_queue_change(-1)
             stats = work_queue.stats()
             logger.info(
@@ -226,6 +243,7 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
                 except FigmaTokenExpired as err:
                     last_err = err
                     record_token_expired()
+                    span.record_exception(err)
                     logger.error(
                         'Figma token expired — skipping retries',
                         extra={'attempt': attempt + 1},
@@ -268,6 +286,11 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
                     },
                 )
             else:
+                try:
+                    from opentelemetry.trace import StatusCode
+                    span.set_status(StatusCode.ERROR, str(last_err))
+                except ImportError:
+                    pass
                 audit_service.delete_ack(audit, ack_id)
                 try:
                     audit_service.post_reply(
@@ -295,6 +318,12 @@ def _worker_loop(work_queue: InstrumentedQueue, stop_event,
         finally:
             work_queue.task_done()
             reset_audit_context(token)
+            if otel_token is not None:
+                try:
+                    from opentelemetry import context as otel_context
+                    otel_context.detach(otel_token)
+                except ImportError:
+                    pass
 
 
 # ── HTTP handler ───────────────────────────────────────────────────────
@@ -361,65 +390,78 @@ def _make_handler(pat, passcode, allowed_file_keys,
                     return
                 processed_ids.add(comment_id)
 
-            audit_id = new_audit_id()
-            audit, reason = _build_audit(
-                payload, comment_id, pat, allowed_file_keys,
-                trigger_config, audit_id, limiter=limiter,
-            )
-
-            if audit is None:
-                logger.debug('skip', extra={'reason': reason})
-                self._respond(200, reason)
-                return
-
-            save_processed(processed_ids)
-
-            trigger_kw = audit.trigger_match.trigger.keyword
-
-            # Temporarily set context so the ack post + enqueue log lines
-            # carry the new audit_id. Cleared on next request.
-            set_audit_context(
-                audit=audit_id,
-                trigger=trigger_kw,
-                node=audit.comment.node_id,
-                file=file_key,
-            )
-
-            logger.info(
-                '\U0001f4ac trigger matched',
-                extra={'user': audit.comment.user_handle},
-            )
-
-            ahead = work_queue.depth
-            if ahead == 0:
-                queue_msg = (
-                    f'\u23f3 {trigger_kw.lstrip("@")} audit queued '
-                    f'\u2014 starting shortly\u2026'
-                )
-            else:
-                queue_msg = (
-                    f'\u23f3 {trigger_kw.lstrip("@")} audit queued '
-                    f'({ahead} ahead of you)\u2026'
+            tracer = get_tracer()
+            with tracer.start_as_current_span('webhook.receive', attributes={
+                'figma.file_key': file_key,
+                'figma.comment_id': str(comment_id),
+            }):
+                audit_id = new_audit_id()
+                audit, reason = _build_audit(
+                    payload, comment_id, pat, allowed_file_keys,
+                    trigger_config, audit_id, limiter=limiter,
                 )
 
-            ack_id = audit_service.post_ack(audit, queue_msg)
+                if audit is None:
+                    logger.debug('skip', extra={'reason': reason})
+                    self._respond(200, reason)
+                    return
 
-            queued = QueuedItem(
-                audit=audit,
-                ack_id=ack_id,
-                audit_id=audit_id,
-            )
-            work_queue.put(queued)
-            record_queue_change(1)
+                save_processed(processed_ids)
 
-            # Record initial displayed position so the updater only fires
-            # when the position actually changes.
-            ack_updater.track_initial(audit_id, position=ahead)
+                trigger_kw = audit.trigger_match.trigger.keyword
 
-            stats = work_queue.stats()
-            logger.info('queue.enqueued', extra={'depth': stats.depth})
+                # Temporarily set context so the ack post + enqueue log lines
+                # carry the new audit_id. Cleared on next request.
+                set_audit_context(
+                    audit=audit_id,
+                    trigger=trigger_kw,
+                    node=audit.comment.node_id,
+                    file=file_key,
+                )
 
-            self._respond(200, 'Queued')
+                logger.info(
+                    '\U0001f4ac trigger matched',
+                    extra={'user': audit.comment.user_handle},
+                )
+
+                ahead = work_queue.depth
+                if ahead == 0:
+                    queue_msg = (
+                        f'\u23f3 {trigger_kw.lstrip("@")} audit queued '
+                        f'\u2014 starting shortly\u2026'
+                    )
+                else:
+                    queue_msg = (
+                        f'\u23f3 {trigger_kw.lstrip("@")} audit queued '
+                        f'({ahead} ahead of you)\u2026'
+                    )
+
+                ack_id = audit_service.post_ack(audit, queue_msg)
+
+                trace_ctx = None
+                try:
+                    from opentelemetry import context as otel_context
+                    trace_ctx = otel_context.get_current()
+                except ImportError:
+                    pass
+
+                queued = QueuedItem(
+                    audit=audit,
+                    ack_id=ack_id,
+                    audit_id=audit_id,
+                    trace_context=trace_ctx,
+                )
+                work_queue.put(queued)
+                record_queue_change(1)
+
+                # Record initial displayed position so the updater only fires
+                # when the position actually changes.
+                ack_updater.track_initial(audit_id, position=ahead)
+
+                stats = work_queue.stats()
+                logger.info('queue.enqueued', extra={'depth': stats.depth})
+
+                self._respond(200, 'Queued')
 
         def _respond(self, code, message):
             body = message.encode()
@@ -547,6 +589,7 @@ def main():
         sys.exit(1)
 
     init_metrics()
+    init_tracing()
 
     trigger_config = load_trigger_config(skills_dir)
     triggers_str = ', '.join(t.get('trigger', '') for t in trigger_config)
