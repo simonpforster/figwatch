@@ -32,6 +32,6 @@ class ClaudeCLIProvider:
 
         result = subprocess.run(
             cmd, capture_output=True, timeout=300,
-            env=subprocess_env(), cwd=str(_HOME),
+            env=subprocess_env(), cwd=tempfile.gettempdir(),
         )
         return parse_claude_output(result)
