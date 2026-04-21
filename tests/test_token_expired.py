@@ -70,7 +70,7 @@ def test_figma_get_retry_raises_token_expired_immediately():
     """Token expiry should propagate without retry."""
     call_count = 0
 
-    def fake_urlopen(req, timeout=None):
+    def fake_urlopen(req, timeout=None, **kwargs):
         nonlocal call_count
         call_count += 1
         raise _make_http_error(403, {'status': 403, 'err': 'Token expired'})
@@ -86,7 +86,7 @@ def test_figma_get_retry_raises_token_expired_immediately():
 
 
 def test_make_request_raises_token_expired():
-    def fake_urlopen(req, timeout=None):
+    def fake_urlopen(req, timeout=None, **kwargs):
         raise _make_http_error(403, {'status': 403, 'err': 'Token expired'})
 
     with mock.patch('figwatch.providers.figma.urllib.request.urlopen', fake_urlopen):
@@ -95,7 +95,7 @@ def test_make_request_raises_token_expired():
 
 
 def test_make_request_post_raises_token_expired():
-    def fake_urlopen(req, timeout=None):
+    def fake_urlopen(req, timeout=None, **kwargs):
         raise _make_http_error(403, {'status': 403, 'err': 'Token expired'})
 
     with mock.patch('figwatch.providers.figma.urllib.request.urlopen', fake_urlopen):
@@ -104,7 +104,7 @@ def test_make_request_post_raises_token_expired():
 
 
 def test_make_request_delete_raises_token_expired():
-    def fake_urlopen(req, timeout=None):
+    def fake_urlopen(req, timeout=None, **kwargs):
         raise _make_http_error(403, {'status': 403, 'err': 'Token expired'})
 
     with mock.patch('figwatch.providers.figma.urllib.request.urlopen', fake_urlopen):
@@ -113,7 +113,7 @@ def test_make_request_delete_raises_token_expired():
 
 
 def test_make_request_non_expired_403_still_raises_http_error():
-    def fake_urlopen(req, timeout=None):
+    def fake_urlopen(req, timeout=None, **kwargs):
         raise _make_http_error(403, {'status': 403, 'err': 'Forbidden'})
 
     with mock.patch('figwatch.providers.figma.urllib.request.urlopen', fake_urlopen):
@@ -135,7 +135,7 @@ def test_validate_token_success():
 
 
 def test_validate_token_expired():
-    def fake_urlopen(req, timeout=None):
+    def fake_urlopen(req, timeout=None, **kwargs):
         raise _make_http_error(403, {'status': 403, 'err': 'Token expired'})
 
     with mock.patch('figwatch.providers.figma.urllib.request.urlopen', fake_urlopen):
@@ -155,7 +155,7 @@ def test_validate_token_no_handle():
 
 
 def test_validate_token_network_error():
-    def fake_urlopen(req, timeout=None):
+    def fake_urlopen(req, timeout=None, **kwargs):
         raise ConnectionError('no network')
 
     with mock.patch('figwatch.providers.figma.urllib.request.urlopen', fake_urlopen):

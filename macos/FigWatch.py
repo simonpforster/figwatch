@@ -10,13 +10,17 @@ _repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
+import certifi
 import json
 import queue
 import re
+import ssl
 import subprocess
 import threading
 import time
 import urllib.request
+
+_SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 import objc
 from AppKit import *
@@ -192,7 +196,7 @@ def _extract_key(s):
 def _figma_get(path, pat):
     try:
         req = urllib.request.Request(f"https://api.figma.com/v1{path}", headers={"X-Figma-Token": pat})
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=10, context=_SSL_CTX) as r:
             return json.loads(r.read())
     except Exception:
         return None
@@ -210,7 +214,7 @@ def _fetch_latest_release():
             "Accept": "application/vnd.github+json",
             "User-Agent": "FigWatch",
         })
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=10, context=_SSL_CTX) as r:
             d = json.loads(r.read())
         zip_url = next(
             (a.get("browser_download_url") for a in d.get("assets", [])
@@ -241,8 +245,24 @@ def _post_notification(title, message):
 
 
 def _validate_token(pat):
-    d = _figma_get("/me", pat)
-    return d.get("handle") if d else None
+    """Return (handle, None) on success or (None, error_string) on failure."""
+    try:
+        req = urllib.request.Request(
+            "https://api.figma.com/v1/me",
+            headers={"X-Figma-Token": pat},
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_SSL_CTX) as r:
+            d = json.loads(r.read())
+        handle = d.get("handle")
+        if handle:
+            return handle, None
+        return None, f"Unexpected API response: {d}"
+    except urllib.error.HTTPError as e:
+        return None, f"HTTP {e.code}: {e.reason}"
+    except urllib.error.URLError as e:
+        return None, f"Network error: {e.reason}"
+    except Exception as e:
+        return None, str(e)
 
 
 def check_deps():
@@ -258,7 +278,7 @@ def check_deps():
             result = subprocess.run(
                 [claude_path, 'auth', 'status', '--json'],
                 capture_output=True, timeout=5,
-                env=handlers.subprocess_env()
+                env=handlers.subprocess_env(),
             )
             stdout = result.stdout.decode('utf-8', errors='replace').strip()
             logged_in = False
@@ -791,7 +811,8 @@ class FigWatch(NSObject):
     def _write_log(self, msg):
         if self._watcher_log_file is None:
             self._watcher_log_file = open("/tmp/fw-watcher.log", "a", encoding="utf-8")
-        self._watcher_log_file.write(msg + "\n")
+        ts = time.strftime("%H:%M:%S")
+        self._watcher_log_file.write(f"[{ts}] {msg}\n")
         self._watcher_log_file.flush()
 
     def _register_login_item(self):
@@ -808,7 +829,7 @@ class FigWatch(NSObject):
 
     def _app_init(self):
         """Background init: validate PAT, load config, start watchers."""
-        self._state["user"] = _validate_token(self._state["pat"])
+        self._state["user"], _ = _validate_token(self._state["pat"])
 
         from figwatch.trigger_config import load_trigger_config
         self._state["trigger_config"] = load_trigger_config()
@@ -895,17 +916,45 @@ class FigWatch(NSObject):
             self._state["workers"].append(t)
 
     def _worker_loop(self, q):
+        seen = set()
         while True:
             audit = q.get()
             if audit is None:
                 break
+            comment_id = audit.comment.comment_id
+            if comment_id in seen:
+                continue
+            seen.add(comment_id)
+            svc = self._state.get("audit_service")
+            if not svc:
+                continue
+            trigger_name = audit.trigger_match.trigger.keyword.lstrip('@')
+            node_id = audit.comment.node_id
+            file_key = audit.comment.file_key
+            self._write_log(f"\u2699\ufe0f  Starting {trigger_name} audit on {file_key} node {node_id}")
+            ack_id = None
             try:
-                svc = self._state.get("audit_service")
-                if svc:
-                    response = svc.execute(audit)
-                    svc.post_reply(audit, response)
-            except Exception:
-                pass
+                ack_id = svc.post_ack(
+                    audit,
+                    f'\u23f3 {trigger_name} audit received \u2014 working on it\u2026',
+                )
+                self._write_log(f"\u2709\ufe0f  Ack posted")
+            except Exception as e:
+                self._write_log(f"\u26a0\ufe0f Ack failed: {e}")
+            try:
+                response = svc.execute(audit)
+                self._write_log(f"\u2705 Audit complete ({len(response)} chars)")
+                if ack_id:
+                    svc.delete_ack(audit, ack_id)
+                svc.post_reply(audit, response)
+                self._write_log(f"\u2709\ufe0f  Reply posted")
+            except Exception as e:
+                if ack_id:
+                    try:
+                        svc.delete_ack(audit, ack_id)
+                    except Exception:
+                        pass
+                self._write_log(f"\u26a0\ufe0f Audit failed: {e}")
 
     def _build_audit_service(self):
         """Construct AuditService for macOS polling path."""
@@ -1099,6 +1148,11 @@ class FigWatch(NSObject):
         except Exception:
             pass
 
+    @objc.typedSelector(b"v@:@")
+    def _rebuildPopoverFromThread_(self, _sender):
+        if self._state.get("popover_open"):
+            self._rebuild_popover()
+
     def _rebuild_popover(self):
         view, h = self._build_current_view()
         content = self._panel.contentView()
@@ -1266,34 +1320,51 @@ class FigWatch(NSObject):
     def doToken_(self, sender):
         self._close_popover()
         NSApp.activateIgnoringOtherApps_(True)
-        alert = NSAlert.alloc().init()
-        alert.setMessageText_("Connect to Figma")
-        alert.setInformativeText_(
-            "Paste your Personal Access Token.\n\n"
-            "Figma \u2192 Settings \u2192 Security \u2192 Personal Access Tokens")
-        alert.addButtonWithTitle_("Connect")
-        alert.addButtonWithTitle_("Get Token \u2197")
-        alert.addButtonWithTitle_("Cancel")
-        inp = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 340, 24))
-        inp.setPlaceholderString_("figd_...")
-        if self._state["pat"]: inp.setStringValue_(self._state["pat"])
-        alert.setAccessoryView_(inp); alert.window().setInitialFirstResponder_(inp)
-        r = alert.runModal()
-        if r == NSAlertFirstButtonReturn:
-            tok = inp.stringValue().strip()
-            if tok:
-                def validate():
-                    name = _validate_token(tok)
-                    if name:
-                        self._state["pat"] = tok; self._state["user"] = name
-                        c = _load_config(); c["figmaPat"] = tok; _save_config(c)
-                        _post_notification("FigWatch", f"Connected as {name}")
-                    else:
-                        _post_notification("FigWatch", "Invalid token \u2014 please check and try again.")
-                threading.Thread(target=validate, daemon=True).start()
-        elif r == NSAlertSecondButtonReturn:
-            NSWorkspace.sharedWorkspace().openURL_(
-                NSURL.URLWithString_("https://www.figma.com/developers/api#access-tokens"))
+        while True:
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_("Connect to Figma")
+            alert.setInformativeText_(
+                "Paste your Personal Access Token.\n\n"
+                "Figma \u2192 Settings \u2192 Security \u2192 Personal Access Tokens")
+            alert.addButtonWithTitle_("Connect")
+            alert.addButtonWithTitle_("Get Token \u2197")
+            alert.addButtonWithTitle_("Cancel")
+            inp = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 340, 24))
+            inp.setPlaceholderString_("figd_...")
+            if self._state["pat"]: inp.setStringValue_(self._state["pat"])
+            alert.setAccessoryView_(inp); alert.window().setInitialFirstResponder_(inp)
+            r = alert.runModal()
+            if r == NSAlertFirstButtonReturn:
+                tok = inp.stringValue().strip()
+                if not tok:
+                    continue
+                name, error = _validate_token(tok)
+                if name:
+                    self._state["pat"] = tok; self._state["user"] = name
+                    c = _load_config(); c["figmaPat"] = tok; _save_config(c)
+                    cached = self._state.get("deps")
+                    if cached:
+                        cached["pat"] = {"ok": True}
+                        cached["all_required"] = cached["claude"]["ok"] and cached["claude_auth"]["ok"] and cached["pat"]["ok"]
+                    if not self._state.get("workers"):
+                        threading.Thread(target=self._app_init, daemon=True).start()
+                    self._rebuild_popover()
+                    _post_notification("FigWatch", f"Connected as {name}")
+                    break
+                else:
+                    err = NSAlert.alloc().init()
+                    err.setMessageText_("Connection Failed")
+                    err.setInformativeText_(
+                        f"Could not validate token with Figma API.\n\n{error}")
+                    err.addButtonWithTitle_("Try Again")
+                    err.addButtonWithTitle_("Cancel")
+                    if err.runModal() != NSAlertFirstButtonReturn:
+                        break
+            elif r == NSAlertSecondButtonReturn:
+                NSWorkspace.sharedWorkspace().openURL_(
+                    NSURL.URLWithString_("https://www.figma.com/developers/api#access-tokens"))
+            else:
+                break
 
     @objc.typedSelector(b"v@:@")
     def doSettings_(self, sender):
@@ -1769,7 +1840,7 @@ class FigWatch(NSObject):
             zip_path = os.path.join(cache, "update.zip")
             staging = os.path.join(cache, "staging")
 
-            with urllib.request.urlopen(zip_url, timeout=120) as r, open(zip_path, "wb") as f:
+            with urllib.request.urlopen(zip_url, timeout=120, context=_SSL_CTX) as r, open(zip_path, "wb") as f:
                 shutil.copyfileobj(r, f)
 
             shutil.rmtree(staging, ignore_errors=True)

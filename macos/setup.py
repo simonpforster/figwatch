@@ -20,7 +20,7 @@ APP = ['FigWatch.py']
 OPTIONS = {
     'argv_emulation': False,
     'iconfile': 'AppIcon.icns',
-    'packages': ['figwatch'],
+    'packages': ['figwatch', 'certifi'],
     'plist': {
         'CFBundleName': 'FigWatch',
         'CFBundleDisplayName': 'FigWatch',
