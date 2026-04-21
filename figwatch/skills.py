@@ -394,7 +394,15 @@ def execute_skill(audit, *, config, design_repo):
                 if usage:
                     span.set_attribute('ai.tokens', usage)
         header = f'\U0001f5e3\ufe0f {trigger_kw} Audit \u2014 {frame_name}'
-        return f'{header}\n\n{reply}\n\n\u2014 {provider.model_id}'
+        signoff = f'\u2014 FigWatch ({provider.model_id})'
+        try:
+            from opentelemetry import trace as otl_trace
+            ctx = otl_trace.get_current_span().get_span_context()
+            if ctx and ctx.trace_id:
+                signoff += f' [{format(ctx.trace_id, "032x")}]'
+        except Exception:
+            pass
+        return f'{header}\n\n{reply}\n\n{signoff}'
     finally:
         for key in ['screenshot', 'node_tree']:
             p = data.get(key)

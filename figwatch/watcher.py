@@ -14,7 +14,7 @@ from figwatch.trigger_config import load_trigger_config
 logger = logging.getLogger(__name__)
 
 _EM_DASH = '\u2014'
-_OWN_REPLY_MARKERS = (_EM_DASH + ' claude', _EM_DASH + ' gemini')
+_OWN_REPLY_MARKERS = (_EM_DASH + ' figwatch',)
 
 _PROCESSED_MAXLEN = 500
 
